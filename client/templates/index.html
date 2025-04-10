@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevProject Game</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Dynamic content will be loaded here -->
+        <div id="auth-section" class="hidden">
+            <h1>Connexion/Inscription</h1>
+            <input type="text" id="username" placeholder="Nom d'utilisateur">
+            <input type="password" id="password" placeholder="Mot de passe">
+            <button id="login-btn">Connexion</button>
+            <button id="register-btn">Inscription</button>
+        </div>
+
+        <div id="game-section" class="hidden">
+            <div id="level-info">
+                <h2 id="level-name"></h2>
+                <p id="timer"></p>
+            </div>
+            <div id="entity-display"></div>
+            <input type="text" id="word-input" placeholder="Entrez le mot...">
+            <button id="submit-word">Valider</button>
+        </div>
+
+        <div id="lobby-section" class="hidden">
+            <h2>Lobby Multijoueur</h2>
+            <div id="players-list"></div>
+            <button id="start-game">Commencer la partie</button>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
