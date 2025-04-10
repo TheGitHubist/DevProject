@@ -1,3 +1,28 @@
+// WebSocket Connection
+const socket = new WebSocket('ws://localhost:8765');
+
+socket.addEventListener('open', (event) => {
+    console.log('WebSocket connected');
+});
+
+socket.addEventListener('message', (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        console.log('Message from server:', data);
+        // Handle different message types here
+    } catch (e) {
+        console.error('Error parsing message:', e);
+    }
+});
+
+function sendWebSocketMessage(type, data) {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type, data }));
+    } else {
+        console.error('WebSocket not connected');
+    }
+}
+
 // DOM Elements
 const authSection = document.getElementById('auth-section');
 const gameSection = document.getElementById('game-section');
