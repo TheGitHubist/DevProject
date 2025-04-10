@@ -12,7 +12,7 @@
 > Programme Client qui reçoit la réponse du serveur et affiche celle-ci à l'utilisateur
 ```
 
-## Base de données
+## Base de données - 0K
 
 ```
 Table User :
@@ -50,7 +50,7 @@ Gérance de sous-niveau si le niveau rentré est un synonyme d'un niveau existan
 > Arrière plan généré pour cacher les lettres acceptées (possible de les trouver évidemment)
 ```
 
-## Intéraction utilisateur
+## Intéraction utilisateur - 0K
 
 ```
 > Champ texte
@@ -68,6 +68,12 @@ Possibilité de gérer également le classement des joueurs
 ---
 
 # Features
+
+## Système de combat type Undertale
+
+```
+Pour vaincre un niveau le joueur devra tuer le boss en utilisant le mot accepté pendant la phase d'attaque et esquivé les attaques du boss pendant la phase de défense.
+```
 
 ## Gestion de back-up 1
 
