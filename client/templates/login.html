@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-900">
+    <div class="max-w-md w-full space-y-8 p-8 bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700/50">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-bold text-white [text-shadow:_0_4px_8px_rgb(0_0_0_/_1),_0_0_10px_rgb(0_0_0_/_1)]">
+                Welcome to MIDI Converter
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">
+                Please sign in to continue
+            </p>
+        </div>
+        <form class="mt-8 space-y-6" action="/login" method="POST">
+            <div class="rounded-md shadow-sm -space-y-px">
+                <div>
+                    <label for="username" class="sr-only">Username</label>
+                    <input id="username" name="username" type="text" required 
+                           class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-700/50 placeholder-gray-400 text-white bg-gray-700/50 backdrop-blur-sm rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]" 
+                           placeholder="Username">
+                </div>
+                <div>
+                    <label for="password" class="sr-only">Password</label>
+                    <input id="password" name="password" type="password" required 
+                           class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-700/50 placeholder-gray-400 text-white bg-gray-700/50 backdrop-blur-sm rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]" 
+                           placeholder="Password">
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="text-red-500 text-sm text-center [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <div>
+                <button type="submit" 
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-bold rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">
+                    Sign in
+                </button>
+            </div>
+        </form>
+        <div class="text-center">
+            <p class="text-sm text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">
+                Don't have an account? 
+                <a href="/register" class="font-medium text-blue-400 hover:text-blue-300">Register</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %} 

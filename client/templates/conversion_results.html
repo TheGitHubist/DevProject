@@ -1,0 +1,36 @@
+{% if error %}
+<div class="text-red-500 mb-4 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ error }}</div>
+{% else %}
+<div id="notes-container">
+    <!-- File Info -->
+    <div class="mb-6">
+        <h4 class="text-lg font-semibold text-white mb-2 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">File Information</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass-effect p-4 rounded-lg">
+                <p class="text-sm text-gray-300 mb-1 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Name</p>
+                <p class="text-white font-medium [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ file_info.name }}</p>
+            </div>
+            <div class="glass-effect p-4 rounded-lg">
+                <p class="text-sm text-gray-300 mb-1 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Size</p>
+                <p class="text-white font-medium [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ (file_info.size / 1024)|round(2) }} KB</p>
+            </div>
+            <div class="glass-effect p-4 rounded-lg">
+                <p class="text-sm text-gray-300 mb-1 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Duration</p>
+                <p class="text-white font-medium [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ (file_info.duration / 1000)|round(2) }} seconds</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes List -->
+    <div>
+        <h4 class="text-lg font-semibold text-white mb-4 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">MIDI Notes</h4>
+        <div class="glass-effect rounded-lg p-4 max-h-[60vh] overflow-y-auto">
+            <div class="space-y-2">
+                {% for note in notes %}
+                <div class="text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ note }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %} 

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - MIDI Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-color 0.3s ease, background-image 0.3s ease;
+        }
+        .color-picker {
+            -webkit-appearance: none;
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            padding: 0;
+            cursor: pointer;
+        }
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        .glass-effect {
+            background: rgba(31, 41, 55, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    {% if session.user %}
+    <nav class="glass-effect shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-white hover:text-gray-300 transition-colors [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">MIDI Converter</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-300 hover:text-white transition-colors [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Home</a>
+                    <a href="/profile" class="text-gray-300 hover:text-white transition-colors [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Profile</a>
+                    <a href="/logout" class="text-gray-300 hover:text-white transition-colors [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Load user's background settings
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/get_background')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.background_color) {
+                        document.body.style.backgroundColor = data.background_color;
+                        if (document.getElementById('bgColor')) {
+                            document.getElementById('bgColor').value = data.background_color;
+                        }
+                    }
+                    
+                    if (data.background_image) {
+                        document.body.style.backgroundImage = `url(${data.background_image})`;
+                        document.body.style.backgroundSize = 'cover';
+                        document.body.style.backgroundPosition = 'center';
+                        document.body.style.backgroundRepeat = 'no-repeat';
+                        document.body.style.backgroundAttachment = 'fixed';
+                    }
+                })
+                .catch(error => console.error('Error loading background settings:', error));
+        });
+
+        // Handle background color change
+        if (document.getElementById('bgColor')) {
+            document.getElementById('bgColor').addEventListener('input', function(e) {
+                const color = e.target.value;
+                document.body.style.backgroundColor = color;
+                
+                // Send update to server
+                const formData = new FormData();
+                formData.append('color', color);
+                
+                fetch('/update_background', {
+                    method: 'POST',
+                    body: formData
+                })
+                .catch(error => console.error('Error updating background color:', error));
+            });
+        }
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html> 
