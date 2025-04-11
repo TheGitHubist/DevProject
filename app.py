@@ -1,118 +1,93 @@
-from flask import Flask, render_template, request
-from flask_sock import Sock
-import asyncio
-from websocket_server import WebSocketServer
-import socket
-import threading
-from static.backup.backup_handler import BackupHandler
-
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session, g
+import mido
 import os
+from werkzeug.utils import secure_filename
+from datetime import datetime
+import sqlite3
+import sys
+from functools import wraps
+import hashlib
+import paho.mqtt.client as mqtt
 
-# Get absolute path to client directory
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-client_dir = os.path.join(base_dir, 'client')
+app = Flask(__name__)
+DATABASE = 'app.db'
 
-app = Flask(__name__,
-            template_folder=os.path.join(client_dir, 'templates'),
-            static_folder=os.path.join(client_dir, 'static'))
+# Database connection handling
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
 
-# Explicit static file route
-from flask import send_from_directory
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    static_path = os.path.join(client_dir, 'static')
-    print(f"Serving static file from: {static_path}/{filename}")  # Debug logging
-    if not os.path.exists(os.path.join(static_path, filename)):
-        print(f"File not found: {static_path}/{filename}")  # Debug logging
-    return send_from_directory(static_path, filename)
-sock = Sock(app)
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
 
-def start_backup_scheduler():
-    """Start the backup scheduler in a separate thread"""
-    handler = BackupHandler()
-    handler.run_scheduler()
-ws_server = WebSocketServer()
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@sock.route('/ws')
-def websocket_route(ws):
-    try:
-        # Verify origin if needed
-        if request.headers.get('Origin'):
-            if not any(origin in request.headers['Origin'] for origin in ['localhost', '127.0.0.1']):
-                return
-        
-        # Accept all WebSocket connections
-        ws.headers = [
-            ('Upgrade', 'websocket'),
-            ('Connection', 'Upgrade'),
-            ('Sec-WebSocket-Accept', '...'),
-            ('Access-Control-Allow-Origin', '*'),
-        ]
-        
-        asyncio.run(ws_server.register(ws))
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # Doesn't need to be reachable
-        s.connect(('10.255.255.255', 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
-
-if __name__ == '__main__':
-    # Start backup scheduler in background thread
-    backup_thread = threading.Thread(target=start_backup_scheduler, daemon=True)
-    backup_thread.start()
-
-    local_ip = get_local_ip()
-    print(f"\nServer running on:")
-    print(f"Local: http://localhost:5000")
-    print(f"Network: http://{local_ip}:5000")
-    print(f"WebSocket: ws://{local_ip}:5000/ws\n")
-    
-    # Run Flask development server
-    app.run(host='0.0.0.0', port=5000)
-
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with app.open_resource('database.py', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['PROFILE_FOLDER'] = 'static/profiles'
 app.config['PROFILE_PICTURES_FOLDER'] = 'static/profile_pictures'
 app.config['ALLOWED_EXTENSIONS'] = {'mid', 'png', 'jpg', 'jpeg'}
-# Increase max file size to 500MB
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
 
 # Ensure required folders exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['PROFILE_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
-
-# User data storage
-USERS_FILE = 'users.json'
-SHARED_SONGS_FILE = 'shared_songs.json'
-
-def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_users(users):
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f)
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+def get_user_by_username(username):
+    return query_db('SELECT * FROM users WHERE username = ?', [username], one=True)
+
+def create_user(username, email, password):
+    db = get_db()
+    db.execute(
+        'INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
+        (username, email, hash_password(password), datetime.now().isoformat())
+    )
+    db.execute(
+        'INSERT INTO profiles (user_id, name) VALUES (?, ?)',
+        (db.cursor().lastrowid, username)
+    )
+    db.commit()
+
+def update_user_profile(username, profile_data):
+    db = get_db()
+    user = get_user_by_username(username)
+    if user:
+        db.execute('''
+            UPDATE profiles 
+            SET name = ?, description = ?, picture_path = ?, 
+                background_color = ?, background_image_path = ?
+            WHERE user_id = ?
+        ''', (
+            profile_data.get('name', username),
+            profile_data.get('description', ''),
+            profile_data.get('picture'),
+            profile_data.get('background_color', '#f3f4f6'),
+            profile_data.get('background_image'),
+            user['id']
+        ))
+        db.commit()
+
+def save_user_profile(username, profile_data):
+    """Wrapper function that calls update_user_profile"""
+    update_user_profile(username, profile_data)
 
 # Login required decorator
 def login_required(f):
@@ -137,29 +112,27 @@ def get_user_pictures_folder(username):
     return user_pictures_folder
 
 def load_user_profile(username):
-    """Load user profile from JSON file"""
-    try:
-        with open(get_user_profile_path(username), 'r') as f:
-            profile = json.load(f)
-            # Ensure background settings exist
-            if 'background_color' not in profile:
-                profile['background_color'] = '#1f2937'  # Default dark gray
-            if 'background_image' not in profile:
-                profile['background_image'] = None
-            return profile
-    except FileNotFoundError:
+    """Load user profile from database"""
+    user = get_user_by_username(username)
+    if not user:
+        return None
+        
+    profile = query_db('SELECT * FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    if profile:
         return {
-            'name': username,
-            'picture': None,
-            'created_at': datetime.now().isoformat(),
-            'background_color': '#1f2937',  # Default dark gray
-            'background_image': None
+            'name': profile['name'],
+            'picture': profile['picture_path'],
+            'background_color': profile['background_color'],
+            'background_image': profile['background_image_path'],
+            'description': profile['description']
         }
-
-def save_user_profile(username, profile_data):
-    profile_path = get_user_profile_path(username)
-    with open(profile_path, 'w') as f:
-        json.dump(profile_data, f)
+    return {
+        'name': username,
+        'picture': None,
+        'background_color': '#1f2937',
+        'background_image': None,
+        'description': ''
+    }
 
 def midi_to_string_list(midi_file):
     try:
@@ -186,14 +159,21 @@ def midi_to_string_list(midi_file):
         raise Exception(f"Error processing MIDI file: {str(e)}")
 
 def load_shared_songs():
-    if os.path.exists(SHARED_SONGS_FILE):
-        with open(SHARED_SONGS_FILE, 'r') as f:
-            return json.load(f)
-    return []
+    return query_db('''
+        SELECT s.*, u.username as shared_by 
+        FROM songs s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.is_shared = 1
+    ''')
 
-def save_shared_songs(songs):
-    with open(SHARED_SONGS_FILE, 'w') as f:
-        json.dump(songs, f)
+def save_shared_song(song):
+    db = get_db()
+    db.execute('''
+        UPDATE songs 
+        SET is_shared = 1
+        WHERE id = ?
+    ''', [song['id']])
+    db.commit()
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -203,8 +183,6 @@ def register():
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         
-        users = load_users()
-        
         # Validate input
         if not username or not email or not password:
             return render_template('register.html', error='All fields are required')
@@ -212,29 +190,17 @@ def register():
         if password != confirm_password:
             return render_template('register.html', error='Passwords do not match')
         
-        if username in users:
+        # Check if username exists
+        if get_user_by_username(username):
             return render_template('register.html', error='Username already exists')
         
-        if any(user['email'] == email for user in users.values()):
+        # Check if email exists
+        existing_user = query_db('SELECT * FROM users WHERE email = ?', [email], one=True)
+        if existing_user:
             return render_template('register.html', error='Email already registered')
         
         # Create new user
-        users[username] = {
-            'email': email,
-            'password': hash_password(password),
-            'created_at': datetime.now().isoformat()
-        }
-        save_users(users)
-        
-        # Create initial profile
-        save_user_profile(username, {
-            'name': username,
-            'description': '',
-            'picture': None,
-            'songs': [],
-            'background_color': '#f3f4f6',
-            'background_image': None
-        })
+        create_user(username, email, password)
         
         # Log the user in
         session['user'] = username
@@ -248,9 +214,8 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        users = load_users()
-        
-        if username in users and users[username]['password'] == hash_password(password):
+        user = get_user_by_username(username)
+        if user and user['password_hash'] == hash_password(password):
             session['user'] = username
             return redirect(url_for('index'))
         else:

@@ -19,6 +19,8 @@ Table User :
 -> id
 -> nom
 -> niveau actuel
+-> background
+-> profiles-pictures
 
 Table Classement :
 -> id
