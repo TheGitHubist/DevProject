@@ -4,7 +4,7 @@
 
 # Prérequis
 
-## Communication machine to machine
+## Communication machine to machine 
 
 ```
 > Programme client qui envoie les entrées utilisateur au serveur
