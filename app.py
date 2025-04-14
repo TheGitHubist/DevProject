@@ -131,19 +131,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_user_profile_path(username):
-    return os.path.join(app.config['PROFILE_FOLDER'], f'{username}_profile.json')
-
-def get_user_upload_folder(username):
-    user_upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], username)
-    os.makedirs(user_upload_folder, exist_ok=True)
-    return user_upload_folder
-
-def get_user_pictures_folder(username):
-    user_pictures_folder = os.path.join(app.config['PROFILE_PICTURES_FOLDER'], username)
-    os.makedirs(user_pictures_folder, exist_ok=True)
-    return user_pictures_folder
-
 def load_user_profile(username):
     """Load user profile from database"""
     user = get_user_by_username(username)
@@ -234,13 +221,18 @@ def profile():
     profile_data = load_user_profile(username)
     return render_template('profile.html', profile=profile_data)
 
+@app.route('/upload_profile_picture', methods=['GET'])
+@login_required
+def upload_profile_picture():
+    return render_template('upload_profile_picture.html')
+
 @app.route('/update_profile_picture', methods=['POST'])
 @login_required
 def update_profile_picture():
-    if 'picture' not in request.files:
+    if 'profile_picture' not in request.files:
         return jsonify({'success': False, 'error': 'No file uploaded'})
     
-    file = request.files['picture']
+    file = request.files['profile_picture']
     if file.filename == '':
         return jsonify({'success': False, 'error': 'No file selected'})
     
@@ -278,6 +270,72 @@ def update_profile_picture():
             return jsonify({'success': False, 'error': str(e)})
     
     return jsonify({'success': False, 'error': 'Invalid file type'})
+    
+@app.route('/update_background_image', methods=['POST'])
+@login_required
+def update_background_image():
+    if 'background_image' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'})
+    
+    file = request.files['background_image']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'})
+    
+    if file and allowed_file(file.filename):
+        try:
+            username = session['user']
+            # Read the file as binary data
+            background_image_data = file.read()
+            
+            # Validate image data
+            if len(background_image_data) > 5 * 1024 * 1024:  # 5MB max
+                return jsonify({'success': False, 'error': 'Image too large (max 5MB)'})
+                
+            if not background_image_data:
+                return jsonify({'success': False, 'error': 'Invalid image data'})
+            
+            # Update database directly with binary data
+            db = get_db()
+            user = get_user_by_username(username)
+            if not user:
+                return jsonify({'success': False, 'error': 'User not found'})
+                
+            db.execute(
+                'UPDATE profiles SET background_image = ? WHERE user_id = ?',
+                (background_image_data, user['id'])
+            )
+            db.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Background image updated successfully'
+            })
+        except Exception as e:
+            app.logger.error(f"Error updating background image: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)})
+    
+    return jsonify({'success': False, 'error': 'Invalid file type'})
+
+@app.route('/background_image/<username>')
+def get_background_image(username):
+    """Serve background image from database as binary data"""
+    user = get_user_by_username(username)
+    if not user:
+        return '', 404
+        
+    profile = query_db('SELECT background_image FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    if not profile or not profile['background_image']:
+        return '', 404
+        
+    try:
+        # Create response with binary data
+        response = make_response(profile['background_image'])
+        response.headers.set('Content-Type', 'image/jpeg')
+        response.headers.set('Content-Disposition', 'inline')
+        return response
+    except Exception as e:
+        app.logger.error(f"Error serving background image: {str(e)}")
+        return '', 500
 
 @app.route('/update_name', methods=['POST'])
 @login_required
