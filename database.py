@@ -26,9 +26,9 @@ def init_db():
         user_id INTEGER UNIQUE NOT NULL,
         name TEXT NOT NULL,
         description TEXT DEFAULT '',
-        picture_path TEXT,
+        picture BLOB,
         background_color TEXT DEFAULT '#f3f4f6',
-        background_image_path TEXT,
+        background_image BLOB,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
@@ -73,17 +73,34 @@ def migrate_existing_data():
                 if os.path.exists(profile_path):
                     with open(profile_path, 'r') as pf:
                         profile_data = json.load(pf)
+                        # Read image files as binary data if they exist
+                        picture_data = None
+                        if profile_data.get('picture'):
+                            try:
+                                with open(profile_data['picture'], 'rb') as img_file:
+                                    picture_data = img_file.read()
+                            except:
+                                picture_data = None
+                                
+                        background_image_data = None
+                        if profile_data.get('background_image'):
+                            try:
+                                with open(profile_data['background_image'], 'rb') as img_file:
+                                    background_image_data = img_file.read()
+                            except:
+                                background_image_data = None
+                                
                         cursor.execute('''
-                        INSERT INTO profiles (user_id, name, description, picture_path, 
-                                            background_color, background_image_path)
+                        INSERT INTO profiles (user_id, name, description, picture, 
+                                            background_color, background_image)
                         VALUES (?, ?, ?, ?, ?, ?)
                         ''', (
                             user_id,
                             profile_data.get('name', username),
                             profile_data.get('description', ''),
-                            profile_data.get('picture'),
+                            picture_data,
                             profile_data.get('background_color', '#f3f4f6'),
-                            profile_data.get('background_image')
+                            background_image_data
                         ))
     
     conn.commit()

@@ -56,15 +56,37 @@ def get_user_by_username(username):
 
 def create_user(username, email, password):
     db = get_db()
-    db.execute(
-        'INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
-        (username, email, hash_password(password), datetime.now().isoformat())
-    )
-    db.execute(
-        'INSERT INTO profiles (user_id, name) VALUES (?, ?)',
-        (db.cursor().lastrowid, username)
-    )
-    db.commit()
+    try:
+        # Start transaction
+        db.execute('BEGIN TRANSACTION')
+        
+        app.logger.debug(f"Inserting user: {username}, {email}")  # Log the user details
+        # Insert user
+        db.execute(
+            'INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
+            (username, email, hash_password(password), datetime.now().isoformat())
+        )
+        user_id = db.cursor().lastrowid  # Get the last inserted user ID
+        app.logger.debug(f"Inserted user ID: {user_id}")  # Log the user ID
+        
+        if not user_id:
+            db.rollback()
+            raise Exception("Failed to create user - no ID returned")
+        
+        # Insert profile
+        db.execute(
+            'INSERT INTO profiles (user_id, name, background_color) VALUES (?, ?, ?)',
+            (user_id, username, '#1f2937')
+        )
+        
+        db.commit()
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        raise Exception("Username or email already exists") from e
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error creating user: {str(e)}")
+        raise Exception("Failed to create user") from e
 
 def update_user_profile(username, profile_data):
     db = get_db()
@@ -72,8 +94,8 @@ def update_user_profile(username, profile_data):
     if user:
         db.execute('''
             UPDATE profiles 
-            SET name = ?, description = ?, picture_path = ?, 
-                background_color = ?, background_image_path = ?
+            SET name = ?, description = ?, picture = ?, 
+                background_color = ?, background_image = ?
             WHERE user_id = ?
         ''', (
             profile_data.get('name', username),
@@ -84,6 +106,27 @@ def update_user_profile(username, profile_data):
             user['id']
         ))
         db.commit()
+
+@app.route('/profile_picture/<username>')
+def get_profile_picture(username):
+    """Serve profile picture from database as binary data"""
+    user = get_user_by_username(username)
+    if not user:
+        return '', 404
+        
+    profile = query_db('SELECT picture FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    if not profile or not profile['picture']:
+        return '', 404
+        
+    try:
+        # Create response with binary data
+        response = make_response(profile['picture'])
+        response.headers.set('Content-Type', 'image/jpeg')
+        response.headers.set('Content-Disposition', 'inline')
+        return response
+    except Exception as e:
+        app.logger.error(f"Error serving profile picture: {str(e)}")
+        return '', 500
 
 def save_user_profile(username, profile_data):
     """Wrapper function that calls update_user_profile"""
@@ -121,10 +164,10 @@ def load_user_profile(username):
     if profile:
         return {
             'name': profile['name'],
-            'picture': profile['picture_path'],
-            'background_color': profile['background_color'],
-            'background_image': profile['background_image_path'],
-            'description': profile['description']
+            'picture': f'/profile_picture/{username}' if 'picture' in profile and profile['picture'] else None,
+            'background_color': profile.get('background_color', '#1f2937'),
+            'background_image': profile.get('background_image'),
+            'description': profile.get('description', '')
         }
     return {
         'name': username,
@@ -200,11 +243,13 @@ def register():
             return render_template('register.html', error='Email already registered')
         
         # Create new user
-        create_user(username, email, password)
-        
-        # Log the user in
-        session['user'] = username
-        return redirect(url_for('index'))
+        try:
+            create_user(username, email, password)
+            # Log the user in
+            session['user'] = username
+            return redirect(url_for('index'))
+        except Exception as e:
+            return render_template('register.html', error=str(e))
     
     return render_template('register.html')
 
@@ -253,22 +298,34 @@ def update_profile_picture():
     if file and allowed_file(file.filename):
         try:
             username = session['user']
-            filename = secure_filename(file.filename)
-            user_pictures_folder = get_user_pictures_folder(username)
-            filepath = os.path.join(user_pictures_folder, filename)
-            file.save(filepath)
+            # Read the file as binary data
+            picture_data = file.read()
             
-            # Update profile data
-            profile_data = load_user_profile(username)
-            picture_url = f'/static/profile_pictures/{username}/{filename}'
-            profile_data['picture'] = picture_url
-            save_user_profile(username, profile_data)
+            # Validate image data
+            if len(picture_data) > 5 * 1024 * 1024:  # 5MB max
+                return jsonify({'success': False, 'error': 'Image too large (max 5MB)'})
+                
+            if not picture_data:
+                return jsonify({'success': False, 'error': 'Invalid image data'})
+            
+            # Update database directly with binary data
+            db = get_db()
+            user = get_user_by_username(username)
+            if not user:
+                return jsonify({'success': False, 'error': 'User not found'})
+                
+            db.execute(
+                'UPDATE profiles SET picture = ? WHERE user_id = ?',
+                (picture_data, user['id'])
+            )
+            db.commit()
             
             return jsonify({
                 'success': True,
-                'picture_url': picture_url
+                'message': 'Profile picture updated successfully'
             })
         except Exception as e:
+            app.logger.error(f"Error updating profile picture: {str(e)}")
             return jsonify({'success': False, 'error': str(e)})
     
     return jsonify({'success': False, 'error': 'Invalid file type'})
@@ -454,16 +511,17 @@ def update_background():
 @login_required
 def get_background():
     """Get user's background settings"""
-    try:
-        username = session['user']
-        profile = load_user_profile(username)
+    username = session['user']
+    profile = load_user_profile(username)
+    if not profile:
         return jsonify({
-            'background_color': profile.get('background_color', '#1f2937'),
-            'background_image': profile.get('background_image')
+            'background_color': '#1f2937',
+            'background_image': None
         })
-    except Exception as e:
-        app.logger.error(f"Error getting background: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({
+        'background_color': profile.get('background_color', '#1f2937'),
+        'background_image': profile.get('background_image')
+    })
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
