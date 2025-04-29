@@ -423,7 +423,7 @@ function convertSong(songId) {
 document.addEventListener('DOMContentLoaded', function() {
     const savedColor = localStorage.getItem('backgroundColor');
     const savedImage = localStorage.getItem('backgroundImage');
-    const username = '{{ session.user }}';
+    const username = '{{ profile.name }}';  // Use profile.name to ensure it's set correctly
     
     if (savedColor) {
         document.body.style.backgroundColor = savedColor;
@@ -433,8 +433,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Apply either saved image or default from profile data
     if (savedImage) {
         document.body.style.backgroundImage = `url(${savedImage})`;
-    } else if ('{{ profile.background_image }}') {
-        document.body.style.backgroundImage = `url(/background_image/${username})`;
+    } else if ('{{ profile.background_image }}' && '{{ profile.background_image }}' !== 'None') {
+        // Force refresh by adding timestamp to URL
+        const timestamp = new Date().getTime();
+        document.body.style.backgroundImage = `url(/background_image/${username}?t=${timestamp})`;
+        localStorage.setItem('backgroundImage', `/background_image/${username}?t=${timestamp}`);
     }
     
     document.body.style.backgroundSize = 'cover';

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g, send_from_directory, make_response
 import os
 from datetime import datetime
 import sqlite3
@@ -8,6 +8,14 @@ import hashlib
 
 app = Flask(__name__)
 DATABASE = 'app.db'
+
+# Allowed file extensions for uploads
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    """Check if filename has an allowed extension"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Database connection handling
 def get_db():
@@ -99,24 +107,29 @@ def update_user_profile(username, profile_data):
 
 @app.route('/profile_picture/<username>')
 def get_profile_picture(username):
-    """Serve profile picture from database as binary data"""
+    """Serve profile picture from filesystem"""
     user = get_user_by_username(username)
     if not user:
         return '', 404
         
     profile = query_db('SELECT picture FROM profiles WHERE user_id = ?', [user['id']], one=True)
     if not profile or not profile['picture']:
-        return '', 404
+        # Return default avatar if no profile picture exists
+        return redirect(url_for('static', filename='default-avatar.png'))
         
     try:
-        # Create response with binary data
-        response = make_response(profile['picture'])
-        response.headers.set('Content-Type', 'image/jpeg')
-        response.headers.set('Content-Disposition', 'inline')
-        return response
+        # Check if file exists
+        if not os.path.exists(profile['picture']):
+            return redirect(url_for('static', filename='default-avatar.png'))
+            
+        # Send file from filesystem
+        return send_from_directory(
+            os.path.dirname(profile['picture']),
+            os.path.basename(profile['picture'])
+        )
     except Exception as e:
         app.logger.error(f"Error serving profile picture: {str(e)}")
-        return '', 500
+        return redirect(url_for('static', filename='default-avatar.png'))
 
 def save_user_profile(username, profile_data):
     """Wrapper function that calls update_user_profile"""
@@ -239,17 +252,19 @@ def update_profile_picture():
     if file and allowed_file(file.filename):
         try:
             username = session['user']
-            # Read the file as binary data
-            picture_data = file.read()
             
-            # Validate image data
-            if len(picture_data) > 5 * 1024 * 1024:  # 5MB max
-                return jsonify({'success': False, 'error': 'Image too large (max 5MB)'})
-                
-            if not picture_data:
-                return jsonify({'success': False, 'error': 'Invalid image data'})
+            # Create profile_pictures directory if it doesn't exist
+            os.makedirs('static/profile_pictures', exist_ok=True)
             
-            # Update database directly with binary data
+            # Generate unique filename
+            file_ext = os.path.splitext(file.filename)[1]
+            filename = f"{username}_{int(datetime.now().timestamp())}{file_ext}"
+            filepath = os.path.join('static', 'profile_pictures', filename)
+            
+            # Save file to filesystem
+            file.save(filepath)
+            
+            # Update database with file path
             db = get_db()
             user = get_user_by_username(username)
             if not user:
@@ -257,13 +272,14 @@ def update_profile_picture():
                 
             db.execute(
                 'UPDATE profiles SET picture = ? WHERE user_id = ?',
-                (picture_data, user['id'])
+                (filepath, user['id'])
             )
             db.commit()
             
             return jsonify({
                 'success': True,
-                'message': 'Profile picture updated successfully'
+                'message': 'Profile picture updated successfully',
+                'filepath': filepath
             })
         except Exception as e:
             app.logger.error(f"Error updating profile picture: {str(e)}")
@@ -274,41 +290,52 @@ def update_profile_picture():
 @app.route('/update_background_image', methods=['POST'])
 @login_required
 def update_background_image():
+    app.logger.debug('Background image upload request received')
     if 'background_image' not in request.files:
+        app.logger.debug('No background_image in request.files')
         return jsonify({'success': False, 'error': 'No file uploaded'})
     
     file = request.files['background_image']
     if file.filename == '':
+        app.logger.debug('Empty filename received')
         return jsonify({'success': False, 'error': 'No file selected'})
     
     if file and allowed_file(file.filename):
         try:
             username = session['user']
-            # Read the file as binary data
-            background_image_data = file.read()
+            app.logger.debug(f'Processing background image upload for user: {username}')
             
-            # Validate image data
-            if len(background_image_data) > 5 * 1024 * 1024:  # 5MB max
-                return jsonify({'success': False, 'error': 'Image too large (max 5MB)'})
-                
-            if not background_image_data:
-                return jsonify({'success': False, 'error': 'Invalid image data'})
+            # Create uploads directory if it doesn't exist
+            os.makedirs('static/uploads/backgrounds', exist_ok=True)
             
-            # Update database directly with binary data
+            # Generate unique filename
+            file_ext = os.path.splitext(file.filename)[1]
+            filename = f"{username}_{int(datetime.now().timestamp())}{file_ext}"
+            filepath = os.path.join('static', 'uploads', 'backgrounds', filename)
+            
+            # Save file to filesystem
+            file.save(filepath)
+            app.logger.debug(f'Saved background image to: {filepath}')
+            
+            # Update database with file path
             db = get_db()
             user = get_user_by_username(username)
             if not user:
+                app.logger.debug(f'User not found: {username}')
                 return jsonify({'success': False, 'error': 'User not found'})
                 
+            app.logger.debug(f'Updating background image path for user ID: {user["id"]}')
             db.execute(
                 'UPDATE profiles SET background_image = ? WHERE user_id = ?',
-                (background_image_data, user['id'])
+                (filepath, user['id'])
             )
             db.commit()
+            app.logger.debug('Background image path updated successfully in database')
             
             return jsonify({
                 'success': True,
-                'message': 'Background image updated successfully'
+                'message': 'Background image updated successfully',
+                'filepath': filepath
             })
         except Exception as e:
             app.logger.error(f"Error updating background image: {str(e)}")
@@ -319,19 +346,30 @@ def update_background_image():
 @app.route('/background_image/<username>')
 def get_background_image(username):
     """Serve background image from database as binary data"""
+    app.logger.debug(f'Background image request for user: {username}')
+    
     user = get_user_by_username(username)
     if not user:
+        app.logger.debug(f'User not found: {username}')
         return '', 404
         
     profile = query_db('SELECT background_image FROM profiles WHERE user_id = ?', [user['id']], one=True)
-    if not profile or not profile['background_image']:
+    if not profile:
+        app.logger.debug('No profile found for user')
+        return '', 404
+        
+    if not profile['background_image']:
+        app.logger.debug('No background image set for user')
         return '', 404
         
     try:
+        app.logger.debug(f'Serving background image (size: {len(profile["background_image"])} bytes)')
+        
         # Create response with binary data
         response = make_response(profile['background_image'])
         response.headers.set('Content-Type', 'image/jpeg')
         response.headers.set('Content-Disposition', 'inline')
+        response.headers.set('Cache-Control', 'no-cache')
         return response
     except Exception as e:
         app.logger.error(f"Error serving background image: {str(e)}")
