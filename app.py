@@ -181,7 +181,7 @@ def load_user_profile(username):
                 background_image_url = '/' + background_image_url
         return {
             'name': profile['name'],
-            'picture': f'/profile_picture/{username}' if 'picture' in profile.keys() and profile['picture'] else None,
+            'picture': profile['picture'] if 'picture' in profile.keys() else None,
             'background_color': profile['background_color'] if 'background_color' in profile.keys() else '#1f2937',
             'background_image': background_image_url,
             'description': profile['description'] if 'description' in profile.keys() else ''
@@ -298,7 +298,7 @@ def update_profile_picture():
             user = get_user_by_username(username)
             if not user:
                 return jsonify({'success': False, 'error': 'User not found'})
-                
+            app.logger.debug(f"Updating profile picture for user: {username}, file path: {filepath} picture_url: {picture_url}")
             db.execute(
                 'UPDATE profiles SET picture = ? WHERE user_id = ?',
                 (filepath, user['id'])
