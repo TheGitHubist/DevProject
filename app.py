@@ -250,7 +250,8 @@ def logout():
     session.pop('user', None)
     return redirect(url_for('login'))
 
-@app.route('/')
+@app.route('/index')
+@login_required
 def index():
     if 'user' in session:
         username = session['user']
