@@ -175,7 +175,7 @@ def load_user_profile(username):
         background_image_url = None
         if 'background_image' in profile.keys() and profile['background_image']:
             # Convert filesystem path to URL path
-            background_image_url = profile['background_image'].replace('static', '')
+            background_image_url = profile['background_image']
             if not background_image_url.startswith('/'):
                 background_image_url = '/' + background_image_url
         return {
@@ -340,7 +340,7 @@ def update_background_image():
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(pictures_dir, filename)
                 file.save(file_path)
-                
+                file_path = file_path.replace('\\', '/')
                 # Store filesystem path in profile for database update
                 profile['background_image'] = file_path
                 app.logger.debug(f"Updated background image path: {profile['background_image']}")
@@ -413,16 +413,9 @@ def get_background():
         username = session['user']
         profile = load_user_profile(username)
         if profile:
-            app.logger.debug(f"line 415 - Background image URL: {profile.get('background_image')}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-            # Replace backslashes with forward slashes in background_image URL for consistency
-            background_image_url = profile.get('background_image')
-            background_image_url = "/static" + background_image_url
-            if background_image_url:
-                background_image_url = background_image_url.replace('\\', '/')
-            app.logger.debug(f"line 415 - Background image URL: {background_image_url}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
             return jsonify({
                 'background_color': profile.get('background_color', '#1f2937'),
-                'background_image': background_image_url
+                'background_image': profile.get('background_image')
             })
     # Default background if no user or profile
     return jsonify({
