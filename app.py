@@ -337,21 +337,10 @@ def update_background_image():
                 file_path = os.path.join(pictures_dir, filename)
                 file.save(file_path)
                 
-                profile['background_image'] = f'/static/uploads/{username}/pictures/{filename}'
-                app.logger.debug(f"Updated background image: {profile['background_image']}")
-                db = get_db()
-                user = get_user_by_username(username)
-                if not user:
-                    app.logger.debug(f'User not found: {username}')
-                    return jsonify({'success': False, 'error': 'User not found'})
-                    
-                app.logger.debug(f'Updating background image path for user ID: {user["id"]}')
-                db.execute(
-                    'UPDATE profiles SET background_image = ? WHERE user_id = ?',
-                    (file_path, user['id'])
-                )
-                db.commit()
-                app.logger.debug('Background image path updated successfully in database')
+                # Store filesystem path in profile for database update
+                profile['background_image'] = file_path
+                app.logger.debug(f"Updated background image path: {profile['background_image']}")
+                
         save_user_profile(username, profile)
         return jsonify({
             'success': True,
