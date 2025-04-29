@@ -28,7 +28,7 @@ os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if filename has an allowed extension"""
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 # Database connection handling
 def get_db():
