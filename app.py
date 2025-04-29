@@ -327,8 +327,8 @@ def update_background_image():
             app.logger.debug(f"Updated background color: {profile['background_color']}")
         
         # Handle background image
-        if 'image' in request.files:
-            file = request.files['image']
+        if 'background_image' in request.files:
+            file = request.files['background_image']
             if file and allowed_file(file.filename):
                 pictures_dir = os.path.join(app.config['UPLOAD_FOLDER'], username, 'pictures')
                 os.makedirs(pictures_dir, exist_ok=True)
