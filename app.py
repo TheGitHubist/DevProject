@@ -85,6 +85,7 @@ def create_user(username, email, password):
         )
         user_id = cursor.lastrowid
         app.logger.debug(f"Inserted user ID: {user_id}")
+        # useless
         
         if not user_id:
             db.rollback()
