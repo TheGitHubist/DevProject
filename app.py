@@ -13,7 +13,7 @@ DATABASE = 'app.db'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PROFILE_FOLDER'] = 'static/profiles'
 app.config['PROFILE_PICTURES_FOLDER'] = 'static/profile_pictures'
-app.config['ALLOWED_EXTENSIONS'] = {'mid', 'png', 'jpg', 'jpeg'}
+app.config['ALLOWED_EXTENSIONS'] = {'gif', 'png', 'jpg', 'jpeg'}
 # Increase max file size to 500MB
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
@@ -27,7 +27,7 @@ os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if filename has an allowed extension"""
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 # Database connection handling
 def get_db():
@@ -357,7 +357,7 @@ def update_background_image():
 
 @app.route('/background_image/<username>')
 def get_background_image(username):
-    """Serve background image from database as binary data"""
+    """Serve background image from filesystem"""
     app.logger.debug(f'Background image request for user: {username}')
     
     user = get_user_by_username(username)
@@ -375,14 +375,15 @@ def get_background_image(username):
         return '', 404
         
     try:
-        app.logger.debug(f'Serving background image (size: {len(profile["background_image"])} bytes)')
+        filepath = profile['background_image']
+        if not os.path.exists(filepath):
+            app.logger.debug(f'Background image file not found: {filepath}')
+            return '', 404
         
-        # Create response with binary data
-        response = make_response(profile['background_image'])
-        response.headers.set('Content-Type', 'image/jpeg')
-        response.headers.set('Content-Disposition', 'inline')
-        response.headers.set('Cache-Control', 'no-cache')
-        return response
+        return send_from_directory(
+            os.path.dirname(filepath),
+            os.path.basename(filepath)
+        )
     except Exception as e:
         app.logger.error(f"Error serving background image: {str(e)}")
         return '', 500
