@@ -21,7 +21,6 @@ app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
 
 # Ensure required folders exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['PROFILE_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
 
 
