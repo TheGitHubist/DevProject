@@ -66,6 +66,7 @@
     <script>
         // Load user's background settings
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Fetching background settings...');
             fetch('/get_background')
                 .then(response => response.json())
                 .then(data => {
@@ -76,7 +77,7 @@
                         }
                     }
                     
-                    if (data.background_image) {
+                    if (data.background_image && data.background_image !== 'None' && data.background_image.trim() !== '') {
                         document.body.style.backgroundImage = `url(${data.background_image})`;
                         document.body.style.backgroundSize = 'cover';
                         document.body.style.backgroundPosition = 'center';

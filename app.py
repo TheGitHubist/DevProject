@@ -251,6 +251,10 @@ def logout():
 
 @app.route('/')
 def index():
+    if 'user' in session:
+        username = session['user']
+        profile_data = load_user_profile(username)
+        return render_template('index.html', profile=profile_data)
     return render_template('index.html')
 
 @app.route('/profile')
@@ -402,6 +406,29 @@ def update_name():
             db.commit()
             return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'No name provided'}), 400
+
+@app.route('/get_background')
+def get_background():
+    if 'user' in session:
+        username = session['user']
+        profile = load_user_profile(username)
+        if profile:
+            app.logger.debug(f"line 415 - Background image URL: {profile.get('background_image')}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            # Replace backslashes with forward slashes in background_image URL for consistency
+            background_image_url = profile.get('background_image')
+            background_image_url = "/static" + background_image_url
+            if background_image_url:
+                background_image_url = background_image_url.replace('\\', '/')
+            app.logger.debug(f"line 415 - Background image URL: {background_image_url}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            return jsonify({
+                'background_color': profile.get('background_color', '#1f2937'),
+                'background_image': background_image_url
+            })
+    # Default background if no user or profile
+    return jsonify({
+        'background_color': '#1f2937',
+        'background_image': None
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
