@@ -163,12 +163,14 @@
 </div>
 
 <script>
+const username = '{{ profile.name }}';  // Define username variable for use in scripts
+
 // Profile Picture Upload
 document.getElementById('picture-upload').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
         const formData = new FormData();
-        formData.append('profile_picture', file);
+        formData.append('picture', file);
         
         fetch('/update_profile_picture', {
             method: 'POST',

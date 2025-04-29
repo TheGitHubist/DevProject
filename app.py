@@ -4,6 +4,7 @@ from datetime import datetime
 import sqlite3
 from functools import wraps
 import hashlib
+from werkzeug.utils import secure_filename
 
 
 app = Flask(__name__)
@@ -14,7 +15,7 @@ DATABASE = 'app.db'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PROFILE_FOLDER'] = 'static/profiles'
 app.config['PROFILE_PICTURES_FOLDER'] = 'static/profile_pictures'
-app.config['ALLOWED_EXTENSIONS'] = {'mid', 'png', 'jpg', 'jpeg'}
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 # Increase max file size to 500MB
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
@@ -22,12 +23,19 @@ app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
 # Ensure required folders exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PROFILE_FOLDER'], exist_ok=True)
 
+def get_user_pictures_folder(username):
+    """Create and return the path to the user's profile pictures folder"""
+    user_folder = os.path.join(app.config['PROFILE_PICTURES_FOLDER'], username)
+    os.makedirs(user_folder, exist_ok=True)
+    return user_folder
 
 def allowed_file(filename):
     """Check if filename has an allowed extension"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
 
 # Database connection handling
 def get_db():
@@ -164,11 +172,17 @@ def load_user_profile(username):
         
     profile = query_db('SELECT * FROM profiles WHERE user_id = ?', [user['id']], one=True)
     if profile:
+        background_image_url = None
+        if 'background_image' in profile.keys() and profile['background_image']:
+            # Convert filesystem path to URL path
+            background_image_url = profile['background_image'].replace('static', '')
+            if not background_image_url.startswith('/'):
+                background_image_url = '/' + background_image_url
         return {
             'name': profile['name'],
             'picture': f'/profile_picture/{username}' if 'picture' in profile.keys() and profile['picture'] else None,
             'background_color': profile['background_color'] if 'background_color' in profile.keys() else '#1f2937',
-            'background_image': profile['background_image'] if 'background_image' in profile.keys() else None,
+            'background_image': background_image_url,
             'description': profile['description'] if 'description' in profile.keys() else ''
         }
     return {
@@ -325,19 +339,19 @@ def update_background_image():
                 
                 profile['background_image'] = f'/static/uploads/{username}/pictures/{filename}'
                 app.logger.debug(f"Updated background image: {profile['background_image']}")
-            db = get_db()
-            user = get_user_by_username(username)
-            if not user:
-                app.logger.debug(f'User not found: {username}')
-                return jsonify({'success': False, 'error': 'User not found'})
-                
-            app.logger.debug(f'Updating background image path for user ID: {user["id"]}')
-            db.execute(
-                'UPDATE profiles SET background_image = ? WHERE user_id = ?',
-                (file_path, user['id'])
-            )
-            db.commit()
-            app.logger.debug('Background image path updated successfully in database')
+                db = get_db()
+                user = get_user_by_username(username)
+                if not user:
+                    app.logger.debug(f'User not found: {username}')
+                    return jsonify({'success': False, 'error': 'User not found'})
+                    
+                app.logger.debug(f'Updating background image path for user ID: {user["id"]}')
+                db.execute(
+                    'UPDATE profiles SET background_image = ? WHERE user_id = ?',
+                    (file_path, user['id'])
+                )
+                db.commit()
+                app.logger.debug('Background image path updated successfully in database')
         save_user_profile(username, profile)
         return jsonify({
             'success': True,
@@ -352,7 +366,7 @@ def update_background_image():
 
 @app.route('/background_image/<username>')
 def get_background_image(username):
-    """Serve background image from database as binary data"""
+    """Serve background image from filesystem path stored in database"""
     app.logger.debug(f'Background image request for user: {username}')
     
     user = get_user_by_username(username)
@@ -370,14 +384,15 @@ def get_background_image(username):
         return '', 404
         
     try:
-        app.logger.debug(f'Serving background image (size: {len(profile["background_image"])} bytes)')
+        file_path = profile['background_image']
+        if not os.path.exists(file_path):
+            app.logger.debug(f'Background image file not found: {file_path}')
+            return '', 404
         
-        # Create response with binary data
-        response = make_response(profile['background_image'])
-        response.headers.set('Content-Type', 'image/jpeg')
-        response.headers.set('Content-Disposition', 'inline')
-        response.headers.set('Cache-Control', 'no-cache')
-        return response
+        directory = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        
+        return send_from_directory(directory, filename)
     except Exception as e:
         app.logger.error(f"Error serving background image: {str(e)}")
         return '', 500
