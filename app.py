@@ -10,7 +10,19 @@ app = Flask(__name__)
 DATABASE = 'app.db'
 
 # Allowed file extensions for uploads
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['PROFILE_FOLDER'] = 'static/profiles'
+app.config['PROFILE_PICTURES_FOLDER'] = 'static/profile_pictures'
+app.config['ALLOWED_EXTENSIONS'] = {'mid', 'png', 'jpg', 'jpeg'}
+# Increase max file size to 500MB
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
+app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
+
+# Ensure required folders exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PROFILE_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
+
 
 def allowed_file(filename):
     """Check if filename has an allowed extension"""
