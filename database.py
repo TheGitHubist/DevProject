@@ -26,24 +26,9 @@ def init_db():
         user_id INTEGER UNIQUE NOT NULL,
         name TEXT NOT NULL,
         description TEXT DEFAULT '',
-        picture BLOB,
+        picture TEXT,
         background_color TEXT DEFAULT '#f3f4f6',
-        background_image BLOB,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-    ''')
-    
-    # Create songs table (for future use)
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS songs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        filepath TEXT NOT NULL,
-        size INTEGER NOT NULL,
-        duration REAL NOT NULL,
-        created_at TEXT NOT NULL,
-        is_shared INTEGER DEFAULT 0,
+        background_image TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')

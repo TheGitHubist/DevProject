@@ -10,10 +10,11 @@ app = Flask(__name__)
 DATABASE = 'app.db'
 
 # Allowed file extensions for uploads
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PROFILE_FOLDER'] = 'static/profiles'
 app.config['PROFILE_PICTURES_FOLDER'] = 'static/profile_pictures'
-app.config['ALLOWED_EXTENSIONS'] = {'gif', 'png', 'jpg', 'jpeg'}
+app.config['ALLOWED_EXTENSIONS'] = {'mid', 'png', 'jpg', 'jpeg'}
 # Increase max file size to 500MB
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
@@ -27,7 +28,7 @@ os.makedirs(app.config['PROFILE_PICTURES_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if filename has an allowed extension"""
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Database connection handling
 def get_db():
@@ -124,20 +125,20 @@ def get_profile_picture(username):
     if not user:
         return '', 404
         
-    profile = query_db('SELECT picture_path FROM profiles WHERE user_id = ?', [user['id']], one=True)
-    if not profile or not profile['picture_path']:
+    profile = query_db('SELECT picture FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    if not profile or not profile['picture']:
         # Return default avatar if no profile picture exists
         return redirect(url_for('static', filename='default-avatar.png'))
         
     try:
         # Check if file exists
-        if not os.path.exists(profile['picture_path']):
+        if not os.path.exists(profile['picture']):
             return redirect(url_for('static', filename='default-avatar.png'))
             
         # Send file from filesystem
         return send_from_directory(
-            os.path.dirname(profile['picture_path']),
-            os.path.basename(profile['picture_path'])
+            os.path.dirname(profile['picture']),
+            os.path.basename(profile['picture'])
         )
     except Exception as e:
         app.logger.error(f"Error serving profile picture: {str(e)}")
@@ -166,7 +167,7 @@ def load_user_profile(username):
     if profile:
         return {
             'name': profile['name'],
-            'picture': f'/profile_picture/{username}' if 'picture_path' in profile.keys() and profile['picture_path'] else None,
+            'picture': f'/profile_picture/{username}' if 'picture' in profile.keys() and profile['picture'] else None,
             'background_color': profile['background_color'] if 'background_color' in profile.keys() else '#1f2937',
             'background_image': profile['background_image'] if 'background_image' in profile.keys() else None,
             'description': profile['description'] if 'description' in profile.keys() else ''
@@ -283,7 +284,7 @@ def update_profile_picture():
                 return jsonify({'success': False, 'error': 'User not found'})
                 
             db.execute(
-                'UPDATE profiles SET picture_path = ? WHERE user_id = ?',
+                'UPDATE profiles SET picture = ? WHERE user_id = ?',
                 (filepath, user['id'])
             )
             db.commit()
@@ -303,11 +304,11 @@ def update_profile_picture():
 @login_required
 def update_background_image():
     app.logger.debug('Background image upload request received')
-    if 'background_image_path' not in request.files:
+    if 'background_image' not in request.files:
         app.logger.debug('No background_image in request.files')
         return jsonify({'success': False, 'error': 'No file uploaded'})
     
-    file = request.files['background_image_path']
+    file = request.files['background_image']
     if file.filename == '':
         app.logger.debug('Empty filename received')
         return jsonify({'success': False, 'error': 'No file selected'})
@@ -357,7 +358,7 @@ def update_background_image():
 
 @app.route('/background_image/<username>')
 def get_background_image(username):
-    """Serve background image from filesystem"""
+    """Serve background image from database as binary data"""
     app.logger.debug(f'Background image request for user: {username}')
     
     user = get_user_by_username(username)
@@ -365,25 +366,24 @@ def get_background_image(username):
         app.logger.debug(f'User not found: {username}')
         return '', 404
         
-    profile = query_db('SELECT background_image_path FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    profile = query_db('SELECT background_image FROM profiles WHERE user_id = ?', [user['id']], one=True)
     if not profile:
         app.logger.debug('No profile found for user')
         return '', 404
         
-    if not profile['background_image_path']:
+    if not profile['background_image']:
         app.logger.debug('No background image set for user')
         return '', 404
         
     try:
-        filepath = profile['background_image_path']
-        if not os.path.exists(filepath):
-            app.logger.debug(f'Background image file not found: {filepath}')
-            return '', 404
+        app.logger.debug(f'Serving background image (size: {len(profile["background_image"])} bytes)')
         
-        return send_from_directory(
-            os.path.dirname(filepath),
-            os.path.basename(filepath)
-        )
+        # Create response with binary data
+        response = make_response(profile['background_image'])
+        response.headers.set('Content-Type', 'image/jpeg')
+        response.headers.set('Content-Disposition', 'inline')
+        response.headers.set('Cache-Control', 'no-cache')
+        return response
     except Exception as e:
         app.logger.error(f"Error serving background image: {str(e)}")
         return '', 500
