@@ -255,28 +255,26 @@ def upload_profile_picture():
 @app.route('/update_profile_picture', methods=['POST'])
 @login_required
 def update_profile_picture():
-    if 'profile_picture' not in request.files:
+    if 'picture' not in request.files:
         return jsonify({'success': False, 'error': 'No file uploaded'})
     
-    file = request.files['profile_picture']
+    file = request.files['picture']
     if file.filename == '':
         return jsonify({'success': False, 'error': 'No file selected'})
     
     if file and allowed_file(file.filename):
         try:
             username = session['user']
-            
-            # Create profile_pictures directory if it doesn't exist
-            os.makedirs('static/profile_pictures', exist_ok=True)
-            
-            # Generate unique filename
-            file_ext = os.path.splitext(file.filename)[1]
-            filename = f"{username}_{int(datetime.now().timestamp())}{file_ext}"
-            filepath = os.path.join('static', 'profile_pictures', filename)
-            
-            # Save file to filesystem
+            filename = secure_filename(file.filename)
+            user_pictures_folder = get_user_pictures_folder(username)
+            filepath = os.path.join(user_pictures_folder, filename)
             file.save(filepath)
             
+            # Update profile data
+            profile_data = load_user_profile(username)
+            picture_url = f'/static/profile_pictures/{username}/{filename}'
+            profile_data['picture'] = picture_url
+            save_user_profile(username, profile_data)
             # Update database with file path
             db = get_db()
             user = get_user_by_username(username)
@@ -288,49 +286,46 @@ def update_profile_picture():
                 (filepath, user['id'])
             )
             db.commit()
-            
             return jsonify({
                 'success': True,
-                'message': 'Profile picture updated successfully',
-                'filepath': filepath
+                'picture_url': picture_url
             })
+            
         except Exception as e:
-            app.logger.error(f"Error updating profile picture: {str(e)}")
             return jsonify({'success': False, 'error': str(e)})
     
+    
     return jsonify({'success': False, 'error': 'Invalid file type'})
+            
+            
+            
+            
     
 @app.route('/update_background_image', methods=['POST'])
 @login_required
 def update_background_image():
-    app.logger.debug('Background image upload request received')
-    if 'background_image' not in request.files:
-        app.logger.debug('No background_image in request.files')
-        return jsonify({'success': False, 'error': 'No file uploaded'})
-    
-    file = request.files['background_image']
-    if file.filename == '':
-        app.logger.debug('Empty filename received')
-        return jsonify({'success': False, 'error': 'No file selected'})
-    
-    if file and allowed_file(file.filename):
-        try:
-            username = session['user']
-            app.logger.debug(f'Processing background image upload for user: {username}')
-            
-            # Create uploads directory if it doesn't exist
-            os.makedirs('static/uploads/backgrounds', exist_ok=True)
-            
-            # Generate unique filename
-            file_ext = os.path.splitext(file.filename)[1]
-            filename = f"{username}_{int(datetime.now().timestamp())}{file_ext}"
-            filepath = os.path.join('static', 'uploads', 'backgrounds', filename)
-            
-            # Save file to filesystem
-            file.save(filepath)
-            app.logger.debug(f'Saved background image to: {filepath}')
-            
-            # Update database with file path
+    try:
+        username = session['user']
+        profile = load_user_profile(username)
+        
+        # Handle background color
+        if 'color' in request.form:
+            profile['background_color'] = request.form['color']
+            app.logger.debug(f"Updated background color: {profile['background_color']}")
+        
+        # Handle background image
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and allowed_file(file.filename):
+                pictures_dir = os.path.join(app.config['UPLOAD_FOLDER'], username, 'pictures')
+                os.makedirs(pictures_dir, exist_ok=True)
+                
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(pictures_dir, filename)
+                file.save(file_path)
+                
+                profile['background_image'] = f'/static/uploads/{username}/pictures/{filename}'
+                app.logger.debug(f"Updated background image: {profile['background_image']}")
             db = get_db()
             user = get_user_by_username(username)
             if not user:
@@ -340,21 +335,21 @@ def update_background_image():
             app.logger.debug(f'Updating background image path for user ID: {user["id"]}')
             db.execute(
                 'UPDATE profiles SET background_image = ? WHERE user_id = ?',
-                (filepath, user['id'])
+                (file_path, user['id'])
             )
             db.commit()
             app.logger.debug('Background image path updated successfully in database')
+        save_user_profile(username, profile)
+        return jsonify({
+            'success': True,
+            'background_color': profile['background_color'],
+            'background_image': profile['background_image']
+        })
+    except Exception as e:
+        app.logger.error(f"Error updating background: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
             
-            return jsonify({
-                'success': True,
-                'message': 'Background image updated successfully',
-                'filepath': filepath
-            })
-        except Exception as e:
-            app.logger.error(f"Error updating background image: {str(e)}")
-            return jsonify({'success': False, 'error': str(e)})
-    
-    return jsonify({'success': False, 'error': 'Invalid file type'})
+
 
 @app.route('/background_image/<username>')
 def get_background_image(username):
