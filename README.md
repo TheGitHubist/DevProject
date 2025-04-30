@@ -4,7 +4,7 @@
 
 # Prérequis
 
-## Communication machine to machine 
+## Communication machine to machine - OK
 
 ```
 > Programme client qui envoie les entrées utilisateur au serveur
@@ -12,7 +12,7 @@
 > Programme Client qui reçoit la réponse du serveur et affiche celle-ci à l'utilisateur
 ```
 
-## Base de données - 0K
+## Base de données - partial 0K
 
 ```
 Table User :
