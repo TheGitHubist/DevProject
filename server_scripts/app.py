@@ -15,9 +15,9 @@ DATABASE = 'app.db'
 
 # Allowed file extensions for uploads
 
-app.config['UPLOAD_FOLDER'] = '../static/uploads'
-app.config['PROFILE_FOLDER'] = '../static/profiles'
-app.config['PROFILE_PICTURES_FOLDER'] = '../static/profile_pictures'
+app.config['UPLOAD_FOLDER'] = template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static/uploads'))
+app.config['PROFILE_FOLDER'] = template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static/profiles'))
+app.config['PROFILE_PICTURES_FOLDER'] = template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static/profile_pictures'))
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 # Increase max file size to 500MB
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
