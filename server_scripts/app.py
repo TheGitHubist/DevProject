@@ -132,6 +132,7 @@ def update_user_profile(username, profile_data):
 
 @app.route('/')
 def root():
+    session.pop('user', None)
     return redirect('/login')
 
 @app.route('/profile_picture/<username>')
@@ -248,6 +249,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    session.pop('user', None)
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
