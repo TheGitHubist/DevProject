@@ -10,7 +10,8 @@ from werkzeug.utils import secure_filename
 import os
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
-app = Flask(__name__, template_folder=template_dir)
+static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 DATABASE = 'app.db'
 
 # Allowed file extensions for uploads
@@ -146,14 +147,22 @@ def get_profile_picture(username):
         return redirect(url_for('static', filename='default-avatar.png'))
         
     try:
+        # Convert URL path to filesystem path
+        picture_url = profile['picture']
+        if picture_url.startswith('/static/'):
+            static_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
+            file_path = os.path.join(static_folder_path, picture_url[len('/static/'):])
+        else:
+            file_path = picture_url
+        
         # Check if file exists
-        if not os.path.exists(profile['picture']):
+        if not os.path.exists(file_path):
             return redirect(url_for('static', filename='default-avatar.png'))
             
         # Send file from filesystem
         return send_from_directory(
-            os.path.dirname(profile['picture']),
-            os.path.basename(profile['picture'])
+            os.path.dirname(file_path),
+            os.path.basename(file_path)
         )
     except Exception as e:
         app.logger.error(f"Error serving profile picture: {str(e)}")
@@ -309,7 +318,7 @@ def update_profile_picture():
             app.logger.debug(f"Updating profile picture for user: {username}, file path: {filepath} picture_url: {picture_url}")
             db.execute(
                 'UPDATE profiles SET picture = ? WHERE user_id = ?',
-                (filepath, user['id'])
+                (picture_url, user['id'])
             )
             db.commit()
             return jsonify({
@@ -384,7 +393,14 @@ def get_background_image(username):
         return '', 404
         
     try:
-        file_path = profile['background_image']
+        # Convert URL path to filesystem path
+        background_url = profile['background_image']
+        if background_url.startswith('/static/'):
+            static_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
+            file_path = os.path.join(static_folder_path, background_url[len('/static/'):])
+        else:
+            file_path = background_url
+        
         if not os.path.exists(file_path):
             app.logger.debug(f'Background image file not found: {file_path}')
             return '', 404
