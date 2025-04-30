@@ -241,9 +241,9 @@ def login():
             session['user'] = username
             return redirect(url_for('index'))
         else:
-            return render_template('login.html', error='Invalid username or password')
+            return render_template('../login.html', error='Invalid username or password')
     
-    return render_template('login.html')
+    return render_template('../login.html')
 
 @app.route('/logout')
 def logout():
@@ -256,15 +256,15 @@ def index():
     if 'user' in session:
         username = session['user']
         profile_data = load_user_profile(username)
-        return render_template('index.html', profile=profile_data)
-    return render_template('index.html')
+        return render_template('../index.html', profile=profile_data)
+    return render_template('../index.html')
 
 @app.route('/profile')
 @login_required
 def profile():
     username = session['user']
     profile_data = load_user_profile(username)
-    return render_template('profile.html', profile=profile_data)
+    return render_template('../profile.html', profile=profile_data)
 
 @app.route('/upload_profile_picture', methods=['GET'])
 @login_required
