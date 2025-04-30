@@ -2,136 +2,23 @@
 
 {% block title %}Home{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-3xl mx-auto">
-        <!-- Welcome Section -->
         <div class="glass-effect rounded-lg shadow-lg p-6 mb-8">
-            <h1 class="text-3xl font-bold text-white mb-4 [text-shadow:_0_4px_8px_rgb(0_0_0_/_1),_0_0_10px_rgb(0_0_0_/_1)]">
-                Welcome to MIDI Converter
-            </h1>
-            <p class="text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">
-                Discover and download MIDI files shared by the community.
-            </p>
-        </div>
-        <div class="glass-effect rounded-lg shadow-lg p-6 mb-8">
-            <h1 class="text-3xl font-bold text-white mb-4 [text-shadow:_0_4px_8px_rgb(0_0_0_/_1),_0_0_10px_rgb(0_0_0_/_1)]">
-                Send Data to MQTT
-            </h1>
-            <form action="/send_to_mqtt" method="post">
-                <input type="text" name="mqtt_data" placeholder="Enter data" required style="color: black;">
-                <button type="submit" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors [text-shadow:_0_2px_4px_rgb(0_0_0_/_1)]">
-                    Send
-                </button>
-            </form>
-        </div>
-        <!-- Shared Songs -->
-        <div class="glass-effect rounded-lg shadow-lg p-6">
-            <h2 class="text-xl font-bold text-white mb-4 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Shared Songs</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-700/50">
-                    <thead>
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Song Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Shared By</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Size</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-700/50">
-                        {% for song in shared_songs %}
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-white [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ song.name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ song.shared_by }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ song.date }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">{{ "%.2f"|format(song.size / 1024) }} KB</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <div class="flex items-center space-x-2">
-                                    <button onclick="downloadSong('{{ song.id }}')" 
-                                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors [text-shadow:_0_2px_4px_rgb(0_0_0_/_1)]">
-                                        Download
-                                    </button>
-                                    <button onclick="viewResults('{{ song.id }}')" 
-                                            class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors [text-shadow:_0_2px_4px_rgb(0_0_0_/_1)]">
-                                        View Notes
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <button class="btn-menu" >Adventure</button>
+            <button class="btn-menu" >Rush</button>
+            <button class="btn-menu" >Multiplayer</button>
+            <button class="btn-menu" >Settings</button>
+            <button class="btn-menu" >Achievments</button>
         </div>
     </div>
 </div>
 
 <script>
-function downloadSong(songId) {
-    window.location.href = `/download_shared_song/${songId}`;
-}
-
-function viewResults(songId) {
-    fetch(`/convert/${songId}`)
-        .then(response => {
-            console.log('Received response:', response);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(html => {
-            console.log('Received HTML:', html);
-            
-            // Create a temporary div to parse the HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            
-            // Check for error message first
-            const errorDiv = tempDiv.querySelector('.text-red-500');
-            if (errorDiv) {
-                console.error('Error in response:', errorDiv.textContent);
-                alert(errorDiv.textContent);
-                return;
-            }
-            
-            // Extract the notes from the response
-            const notesContainer = tempDiv.querySelector('#notes-container');
-            console.log('Found notes container:', notesContainer);
-            
-            if (notesContainer) {
-                // Create a modal to display the conversion results
-                const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-                modal.innerHTML = `
-                    <div class="glass-effect rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-xl font-bold text-white [text-shadow:_0_3px_6px_rgb(0_0_0_/_1)]">Song Notes</h3>
-                            <button onclick="this.closest('.fixed').remove()" 
-                                    class="text-gray-400 hover:text-white transition-colors">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="space-y-4">
-                            ${notesContainer.innerHTML}
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-                console.log('Modal added to document');
-            } else {
-                console.error('No notes container found in response');
-                console.log('Full response HTML:', html);
-                alert('No notes found for this song.');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching results:', error);
-            alert('Error fetching results: ' + error.message);
-        });
-}
 </script>
 {% endblock %} 

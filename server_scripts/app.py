@@ -268,7 +268,7 @@ def logout():
     session.pop('user', None)
     return redirect(url_for('login'))
 
-@app.route('/index')
+@app.route('/home')
 @login_required
 def index():
     if 'user' in session:
