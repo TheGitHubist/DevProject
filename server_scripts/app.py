@@ -7,14 +7,17 @@ import hashlib
 from werkzeug.utils import secure_filename
 
 
-app = Flask(__name__)
+import os
+
+template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
+app = Flask(__name__, template_folder=template_dir)
 DATABASE = 'app.db'
 
 # Allowed file extensions for uploads
 
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['PROFILE_FOLDER'] = 'static/profiles'
-app.config['PROFILE_PICTURES_FOLDER'] = 'static/profile_pictures'
+app.config['UPLOAD_FOLDER'] = '../static/uploads'
+app.config['PROFILE_FOLDER'] = '../static/profiles'
+app.config['PROFILE_PICTURES_FOLDER'] = '../static/profile_pictures'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 # Increase max file size to 500MB
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
@@ -41,7 +44,7 @@ def allowed_file(filename):
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+        db = g._database = sqlite3.connect(DATABASE, timeout=10)
         db.row_factory = sqlite3.Row
     return db
 
@@ -125,6 +128,10 @@ def update_user_profile(username, profile_data):
             user['id']
         ))
         db.commit()
+
+@app.route('/')
+def root():
+    return redirect('/login')
 
 @app.route('/profile_picture/<username>')
 def get_profile_picture(username):
@@ -241,9 +248,9 @@ def login():
             session['user'] = username
             return redirect(url_for('index'))
         else:
-            return render_template('../login.html', error='Invalid username or password')
+            return render_template('login.html', error='Invalid username or password')
     
-    return render_template('../login.html')
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
@@ -256,15 +263,15 @@ def index():
     if 'user' in session:
         username = session['user']
         profile_data = load_user_profile(username)
-        return render_template('../index.html', profile=profile_data)
-    return render_template('../index.html')
+        return render_template('index.html', profile=profile_data)
+    return render_template('index.html')
 
 @app.route('/profile')
 @login_required
 def profile():
     username = session['user']
     profile_data = load_user_profile(username)
-    return render_template('../profile.html', profile=profile_data)
+    return render_template('profile.html', profile=profile_data)
 
 @app.route('/upload_profile_picture', methods=['GET'])
 @login_required
@@ -343,8 +350,8 @@ def update_background_image():
                 file_path = os.path.join(pictures_dir, filename)
                 file.save(file_path)
                 file_path = file_path.replace('\\', '/')
-                # Store filesystem path in profile for database update
-                profile['background_image'] = file_path
+                # Store URL path in profile for database update
+                profile['background_image'] = f'/static/uploads/{username}/pictures/{filename}'
                 app.logger.debug(f"Updated background image path: {profile['background_image']}")
                 
         save_user_profile(username, profile)
@@ -356,8 +363,6 @@ def update_background_image():
     except Exception as e:
         app.logger.error(f"Error updating background: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-            
-
 
 @app.route('/background_image/<username>')
 def get_background_image(username):
