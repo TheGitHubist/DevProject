@@ -194,7 +194,7 @@
         document.getElementById("hpBar").innerText = `HP: ${hp}`;
     }
 
-    setInterval(spawnShurikenFromBorder, 600);
+    setInterval(spawnShurikenFromBorder(), 6);
 
     setInterval(() => {
     if (Math.random() < 0.5) {
