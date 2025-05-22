@@ -40,17 +40,19 @@
     }
 
     class ProjectileAttack {
-        constructor(name, damage, speed, x, y) {
+        constructor(name, damage, speed, x, y, angle) {
             this.name = name;
             this.damage = damage;
             this.speed = speed;
             this.x = x;
             this.y = y;
-            this.radius = 5;
+            this.radius = 10; // used for collision
+            this.angle = angle; // radians
         }
 
         move() {
-            this.y += this.speed;
+            this.x += this.speed * Math.cos(this.angle);
+            this.y += this.speed * Math.sin(this.angle);
         }
 
         isCollidingWith(px, py, pr) {
@@ -59,7 +61,25 @@
             const dist = Math.sqrt(dx * dx + dy * dy);
             return dist < this.radius + pr;
         }
+
+        draw(ctx) {
+            const size = 15;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+
+            ctx.beginPath();
+            ctx.moveTo(0, -size);      // Tip
+            ctx.lineTo(-size / 2, size); // Bottom left
+            ctx.lineTo(size / 2, size);  // Bottom right
+            ctx.closePath();
+
+            ctx.fillStyle = 'yellow';
+            ctx.fill();
+            ctx.restore();
+        }
     }
+
 
 
     class SlashAttack {
@@ -137,7 +157,10 @@
     });
 
     function spawnBullet() {
-        bullets.push(new ProjectileAttack("basic", 10, 3 + Math.random() * 2, Math.random() * canvas.width, 0));
+        const startX = canvas.width + 20; // Start slightly off-screen right
+        const startY = Math.random() * canvas.height;
+        const angle = Math.PI; // 180 degrees (left)
+        bullets.push(new ProjectileAttack("arrow", 10, 3, startX, startY, angle));
     }
 
     function updateHPBar(hp) {
@@ -189,21 +212,20 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Draw player
         ctx.beginPath();
         ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
         ctx.fillStyle = 'white';
         ctx.fill();
 
-        bullets.forEach(b => {
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-            ctx.fillStyle = 'red';
-            ctx.fill();
-        });
+        // Draw bullets
+        bullets.forEach(b => b.draw(ctx));
 
+        // Draw slashes and lasers
         slashes.forEach(s => s.draw(ctx));
         lasers.forEach(l => l.draw(ctx));
     }
+
 
 
     function loop() {
