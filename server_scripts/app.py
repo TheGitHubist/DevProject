@@ -14,23 +14,6 @@ import requests
 
 import json
 
-def fetch_and_store_word(word):
-    api_url = f'https://api.api-ninjas.com/v1/thesaurus?word={word}'
-    response = requests.get(api_url, headers={'X-Api-Key': 'gZZ5UTismpV+IlMzK0rAEg==tKZALEKJdzxpuFdr'})
-    if response.status_code == requests.codes.ok:
-        data = response.json()
-        try:
-            with open('words.json', 'r', encoding='utf-8') as f:
-                words_data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            words_data = {}
-        words_data[word] = data
-        with open('words.json', 'w', encoding='utf-8') as f:
-            json.dump(words_data, f, indent=4)
-        print(f"Data for word '{word}' saved to words.json")
-    else:
-        print("Error:", response.status_code, response.text)
-
 players = {}
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
