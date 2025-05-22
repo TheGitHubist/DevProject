@@ -22,6 +22,9 @@
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    const slashes = [];
+    const lasers = [];
+
 
     class Player {
         constructor() {
@@ -141,6 +144,15 @@
         document.getElementById("hpBar").innerText = `HP: ${hp}`;
     }
 
+    setInterval(() => {
+    if (Math.random() < 0.5) {
+        slashes.push(new SlashAttack("slash", 15, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
+    } else {
+        lasers.push(new LaserBeamAttack("laser", 25, Math.random() * canvas.width, 20, 800));
+    }
+    }, 4000);
+
+
     function sendDamageToServer(amount) {
         fetch('/api/player/hp', {
             method: 'POST',
@@ -160,25 +172,39 @@
                 bullets.splice(bullets.indexOf(b), 1);
             }
         });
+
+        slashes.forEach(s => {
+            if (s.isCollidingWith(playerX, playerY, playerRadius)) {
+                player.takeDamage(s.damage);
+            }
+        });
+
+        lasers.forEach(l => {
+            if (l.isCollidingWith(playerX, playerY, playerRadius)) {
+                player.takeDamage(l.damage);
+            }
+        });
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Player
         ctx.beginPath();
         ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
         ctx.fillStyle = 'white';
         ctx.fill();
 
-        // Bullets
         bullets.forEach(b => {
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
             ctx.fillStyle = 'red';
             ctx.fill();
         });
+
+        slashes.forEach(s => s.draw(ctx));
+        lasers.forEach(l => l.draw(ctx));
     }
+
 
     function loop() {
         update();
