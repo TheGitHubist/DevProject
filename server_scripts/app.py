@@ -16,6 +16,14 @@ import json
 
 players = {}
 
+from game_logic.boss import Boss
+
+# Initialize a global boss instance
+boss = Boss("The Overlord", {
+    "conquest": ["conquest", "reign", "rule", "dominion"],
+    "despair": ["despair", "pain", "sorrow", "grief"]
+})
+
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
@@ -462,6 +470,32 @@ def game():
     # Create a new player object at the start of the game, replacing any existing one
     players[username] = Player()
     return render_template('game.html')
+
+@app.route('/api/boss', methods=['GET'])
+@login_required
+def get_boss():
+    global boss
+    return jsonify({
+        'name': boss.name,
+        'health': boss.health
+    })
+
+@app.route('/api/boss/damage', methods=['POST'])
+@login_required
+def damage_boss():
+    global boss
+    data = request.get_json()
+    damage = data.get('damage', 0)
+    boss.take_dmg(damage)
+    defeated = False
+    if boss.health <= 0:
+        defeated = True
+        # Reset boss health for next round
+        boss.health = 1000
+    return jsonify({
+        'health': boss.health,
+        'defeated': defeated
+    })
 
 @app.route('/api/player/hp', methods=['GET', 'POST'])
 @login_required

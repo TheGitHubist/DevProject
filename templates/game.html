@@ -17,6 +17,12 @@
 <body>
     <img id="shurikenSprite" src="/static/sprites/shuriken.png" style="display: none;">
     <div id="hpBar">HP: 100</div>
+    <div id="bossBar" style="position: absolute; top: 40px; left: 10px; color: red; font-family: sans-serif; font-weight: bold;">
+        Boss HP: 1000
+    </div>
+    <div id="keywordsContainer" style="position: absolute; bottom: 10px; left: 10px; color: white; font-family: sans-serif; font-size: 18px;">
+        <!-- Keywords will appear here -->
+    </div>
 <canvas id="gameCanvas"></canvas>
 <script>
     const canvas = document.getElementById('gameCanvas');
@@ -37,6 +43,102 @@
             sendDamageToServer(amount);
         }
     }
+
+    let bossHealth = 1000;
+    const bossBar = document.getElementById('bossBar');
+    const keywordsContainer = document.getElementById('keywordsContainer');
+    let keywordsData = {};
+
+    // Fetch boss info from server
+    async function fetchBoss() {
+        const response = await fetch('/api/boss');
+        const data = await response.json();
+        bossHealth = data.health;
+        updateBossBar();
+    }
+
+    // Fetch keywords from words.json
+    async function fetchKeywords() {
+        const response = await fetch('/static/words.json');
+        keywordsData = await response.json();
+    }
+
+    // Update boss HP display
+    function updateBossBar() {
+        bossBar.innerText = `Boss HP: ${bossHealth}`;
+    }
+
+    // Display all keywords
+    function displayKeywords() {
+        keywordsContainer.innerHTML = '';
+        for (const group in keywordsData) {
+            const words = keywordsData[group].word;
+            words.forEach(word => {
+                const wordElem = document.createElement('span');
+                wordElem.innerText = word;
+                wordElem.style.marginRight = '15px';
+                wordElem.style.cursor = 'pointer';
+                wordElem.style.userSelect = 'none';
+                wordElem.style.padding = '5px 10px';
+                wordElem.style.border = '1px solid white';
+                wordElem.style.borderRadius = '5px';
+                wordElem.style.display = 'inline-block';
+                wordElem.style.transition = 'background-color 0.3s';
+                wordElem.addEventListener('mouseenter', () => {
+                    wordElem.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                });
+                wordElem.addEventListener('mouseleave', () => {
+                    wordElem.style.backgroundColor = 'transparent';
+                });
+                wordElem.addEventListener('click', () => {
+                    handleKeywordClick(group, word);
+                });
+                keywordsContainer.appendChild(wordElem);
+            });
+        }
+    }
+
+    // Handle keyword click
+    async function handleKeywordClick(group, word) {
+        // Check if clicked word is the correct keyword for the boss
+        if (boss.key_word && boss.key_word[group] && boss.key_word[group].includes(word)) {
+            // Send damage to boss
+            const damageAmount = 50; // Arbitrary damage value
+            const response = await fetch('/api/boss/damage', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({damage: damageAmount})
+            });
+            const data = await response.json();
+            bossHealth = data.health;
+            updateBossBar();
+            if (data.defeated) {
+                alert('Boss defeated! Returning to home page.');
+                window.location.href = '/home';
+            }
+        } else {
+            // Wrong keyword clicked, maybe do nothing or feedback
+            alert('Wrong keyword!');
+        }
+    }
+
+    // Initialize boss object locally for checking keywords
+    let boss = {
+        key_word: {}
+    };
+
+    // Initialize game additions
+    async function initGameBoss() {
+        await fetchBoss();
+        await fetchKeywords();
+        boss.key_word = keywordsData;
+        displayKeywords();
+        setInterval(() => {
+            displayKeywords();
+        }, 15000);
+    }
+
+    initGameBoss();
 
     class ProjectileAttack {
         constructor(name, damage, speed, x, y, targetX, targetY, sprite) {
