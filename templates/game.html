@@ -33,9 +33,7 @@
         }
 
         takeDamage(amount) {
-            this.hp -= amount;
-            if (this.hp < 0) this.hp = 0;
-            updateHPBar(this.hp);
+            // Do not update HP locally, only send damage to server
             sendDamageToServer(amount);
         }
     }
@@ -211,7 +209,14 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({damage: amount})
         }).then(res => res.json()).then(data => {
+            // Update HP bar only from server response
             updateHPBar(data.hp);
+            // Update local player HP to server authoritative HP
+            player.hp = data.hp;
+            // Redirect to index.html if HP is 0 or less
+            if (player.hp <= 0) {
+                window.location.href = '/home';
+            }
         });
     }
 
