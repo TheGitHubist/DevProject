@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mouse Dodge Game</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; }
+        canvas { display: block; background-color: black; }
+        #hpBar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+<div id="hpBar">HP: 100</div>
+<canvas id="gameCanvas"></canvas>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    class Player {
+        constructor() {
+            this.hp = 100;
+        }
+
+        takeDamage(amount) {
+            this.hp -= amount;
+            if (this.hp < 0) this.hp = 0;
+            updateHPBar(this.hp);
+            sendDamageToServer(amount);
+        }
+    }
+
+    class ProjectileAttack {
+        constructor(name, damage, speed, x, y) {
+            this.name = name;
+            this.damage = damage;
+            this.speed = speed;
+            this.x = x;
+            this.y = y;
+            this.radius = 5;
+        }
+
+        move() {
+            this.y += this.speed;
+        }
+
+        isCollidingWith(px, py, pr) {
+            const dx = this.x - px;
+            const dy = this.y - py;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            return dist < this.radius + pr;
+        }
+    }
+
+    const player = new Player();
+    let playerX = canvas.width / 2;
+    let playerY = canvas.height / 2;
+    const playerRadius = 10;
+    const bullets = [];
+
+    document.addEventListener('mousemove', (e) => {
+        playerX = e.clientX;
+        playerY = e.clientY;
+    });
+
+    function spawnBullet() {
+        bullets.push(new ProjectileAttack("basic", 10, 3 + Math.random() * 2, Math.random() * canvas.width, 0));
+    }
+
+    function updateHPBar(hp) {
+        document.getElementById("hpBar").innerText = `HP: ${hp}`;
+    }
+
+    function sendDamageToServer(amount) {
+        fetch('/api/player/hp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({damage: amount})
+        }).then(res => res.json()).then(data => {
+            updateHPBar(data.hp);
+        });
+    }
+
+    function update() {
+        bullets.forEach(b => b.move());
+
+        bullets.forEach(b => {
+            if (b.isCollidingWith(playerX, playerY, playerRadius)) {
+                player.takeDamage(b.damage);
+                bullets.splice(bullets.indexOf(b), 1);
+            }
+        });
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Player
+        ctx.beginPath();
+        ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        // Bullets
+        bullets.forEach(b => {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+        });
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    setInterval(spawnBullet, 400);
+    loop();
+</script>
+</body>
+</html>

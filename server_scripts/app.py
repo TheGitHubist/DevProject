@@ -5,9 +5,12 @@ import sqlite3
 from functools import wraps
 import hashlib
 from werkzeug.utils import secure_filename
+from game_logic.player import Player
 
 
 import os
+
+players = {}
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
@@ -447,6 +450,27 @@ def get_background():
         'background_color': '#1f2937',
         'background_image': None
     })
+
+@app.route('/api/player/hp', methods=['GET', 'POST'])
+@login_required
+def player_hp():
+    username = session['user']
+    if username not in players:
+        players[username] = Player()
+    player = players[username]
+
+    if request.method == 'GET':
+        return jsonify({'hp': player.hp})
+
+    if request.method == 'POST':
+        data = request.get_json()
+        damage = data.get('damage', 0)
+        player.hp -= damage
+        if player.hp < 0:
+            player.hp = 0
+        return jsonify({'hp': player.hp})
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
