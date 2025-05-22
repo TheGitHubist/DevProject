@@ -58,6 +58,70 @@
         }
     }
 
+
+    class SlashAttack {
+        constructor(name, damage, x, y, width, height, duration) {
+            this.name = name;
+            this.damage = damage;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.duration = duration; // in ms
+            this.startTime = performance.now();
+        }
+
+        isActive() {
+            return performance.now() - this.startTime < this.duration;
+        }
+
+        isCollidingWith(px, py, pr) {
+            return this.isActive() &&
+                px + pr > this.x &&
+                px - pr < this.x + this.width &&
+                py + pr > this.y &&
+                py - pr < this.y + this.height;
+        }
+
+        draw(ctx) {
+            if (this.isActive()) {
+                ctx.fillStyle = 'orange';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+    }
+
+    class LaserBeamAttack {
+        constructor(name, damage, x, width, duration) {
+            this.name = name;
+            this.damage = damage;
+            this.x = x;
+            this.width = width;
+            this.y = 0;
+            this.height = canvas.height;
+            this.duration = duration;
+            this.startTime = performance.now();
+        }
+
+        isActive() {
+            return performance.now() - this.startTime < this.duration;
+        }
+
+        isCollidingWith(px, py, pr) {
+            return this.isActive() &&
+                px + pr > this.x &&
+                px - pr < this.x + this.width;
+        }
+
+        draw(ctx) {
+            if (this.isActive()) {
+                ctx.fillStyle = 'cyan';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+    }
+
+
     const player = new Player();
     let playerX = canvas.width / 2;
     let playerY = canvas.height / 2;
