@@ -476,6 +476,8 @@ def get_background():
 @login_required
 def game():
     username = session['user']
+    # Create a new player object at the start of the game, replacing any existing one
+    players[username] = Player()
     return render_template('game.html')
 
 @app.route('/api/player/hp', methods=['GET', 'POST'])
@@ -495,6 +497,9 @@ def player_hp():
         player.hp -= damage
         if player.hp < 0:
             player.hp = 0
+        # Delete player object if hp is 0 (player died)
+        if player.hp == 0:
+            del players[username]
         return jsonify({'hp': player.hp})
 
 
