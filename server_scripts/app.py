@@ -455,6 +455,12 @@ def get_background():
         'background_color': '#1f2937',
         'background_image': None
     })
+    
+@app.route('/game')
+@login_required
+def game():
+    username = session['user']
+    return render_template('game.html')
 
 @app.route('/api/player/hp', methods=['GET', 'POST'])
 @login_required
