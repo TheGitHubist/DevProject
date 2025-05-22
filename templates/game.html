@@ -179,7 +179,7 @@
 
         bullets.push(new ProjectileAttack(
             "shuriken",
-            10,
+            1,
             3,
             x,
             y,
@@ -194,13 +194,13 @@
         document.getElementById("hpBar").innerText = `HP: ${hp}`;
     }
 
-    setInterval(spawnShurikenFromBorder(), 6);
+    setInterval(spawnShurikenFromBorder, 60);
 
     setInterval(() => {
     if (Math.random() < 0.5) {
-        slashes.push(new SlashAttack("slash", 15, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
+        slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
     } else {
-        lasers.push(new LaserBeamAttack("laser", 25, Math.random() * canvas.width, 20, 800));
+        lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
     }
     }, 4000);
 
@@ -261,9 +261,8 @@
         update();
         draw();
         requestAnimationFrame(loop);
+        console.log(player.hp)
     }
-
-    setInterval(spawnBullet, 400);
     loop();
 </script>
 </body>
