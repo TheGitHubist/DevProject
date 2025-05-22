@@ -5,6 +5,11 @@ import sqlite3
 from functools import wraps
 import hashlib
 from werkzeug.utils import secure_filename
+
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from game_logic.player import Player
 
 
