@@ -11,11 +11,11 @@
   <div class="max-w-3xl mx-auto">
     <!-- Main menu -->
     <div id="menu" class="glass-effect rounded-lg shadow-lg p-6 mb-8">
-      <button class="btn-menu" id="adventureBtn">Adventure</button>
+      <button class="btn-menu" id="adventurebtn">Adventure</button>
       <a href="/game?fight=fight_2" class="btn-menu">Rush</a>
-      <button class="btn-menu">Multiplayer</button>
-      <button class="btn-menu">Settings</button>
-      <button class="btn-menu">Achievments</button>
+      <button class="btn-menu" id="multibtn">Multiplayer</button>
+      <button class="btn-menu" id="settingsbtn">Settings</button>
+      <button class="btn-menu" id="achievmentsbtn">Achievments</button>
     </div>
 
     <!-- Level list (initially hidden) -->
@@ -27,19 +27,80 @@
         <li><a href="/game?fight=level3" class="btn-menu">Level 3</a></li>
         <!-- Add more levels as needed -->
       </ul>
-      <button class="btn-menu mt-4" id="backBtn">Back</button>
+      <button class="btn-menu mt-4" id="backbtn1">Back</button>
+    </div>
+
+    <div id="Multiplayer" class="glass-effect rounded-lg shadow-lg p-6 mb-8 hidden">
+      <h2 class="text-xl font-bold mb-4">Choose your mode:</h2>
+      <ul class="space-y-2">
+        <li><a href="/game?fight=fight_1" class="btn-menu">World Boss</a></li>
+        <li><a href="/game?fight=fight_2" class="btn-menu">Create Lobby</a></li>
+        <li><a href="/game?fight=fight_2" class="btn-menu">Join Lobby</a></li>
+        <!-- Add more levels as needed -->
+      </ul>
+      <button class="btn-menu mt-4" id="backbtn2">Back</button>
+    </div>
+
+    <div id="Settings" class="glass-effect rounded-lg shadow-lg p-6 mb-8 hidden">
+      <h2 class="text-xl font-bold mb-4">Difficulty:</h2>
+      <ul class="space-y-2">
+        <li><a href="/game?fight=fight_1" class="btn-menu">Easy</a></li>
+        <li><a href="/game?fight=fight_2" class="btn-menu">Medium</a></li>
+        <li><a href="/game?fight=level3" class="btn-menu">Hard</a></li>
+        <!-- Add more levels as needed -->
+      </ul>
+      <button class="btn-menu mt-4" id="backbtn3">Back</button>
+    </div>
+
+    <div id="Achievments" class="glass-effect rounded-lg shadow-lg p-6 mb-8 hidden">
+      <h2 class="text-xl font-bold mb-4">Here yours Achievments</h2>
+      <ul class="space-y-2">
+        <li><a href="/game?fight=fight_1" class="btn-menu">Welcome to WorldEnderWord</a></li>
+        <!-- Add more levels as needed -->
+      </ul>
+      <button class="btn-menu mt-4" id="backbtn4">Back</button>
     </div>
   </div>
 </div>
 
 <script>
-  document.getElementById("adventureBtn").addEventListener("click", function () {
+  document.getElementById("adventurebtn").addEventListener("click", function () {
     document.getElementById("menu").classList.add("hidden");
     document.getElementById("levelList").classList.remove("hidden");
   });
 
-  document.getElementById("backBtn").addEventListener("click", function () {
+  document.getElementById("backbtn1").addEventListener("click", function () {
     document.getElementById("levelList").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+  });
+
+  document.getElementById("multibtn").addEventListener("click", function () {
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("Multiplayer").classList.remove("hidden");
+  });
+
+  document.getElementById("backbtn2").addEventListener("click", function () {
+    document.getElementById("Multiplayer").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+  });
+
+  document.getElementById("settingsbtn").addEventListener("click", function () {
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("Settings").classList.remove("hidden");
+  });
+
+  document.getElementById("backbtn3").addEventListener("click", function () {
+    document.getElementById("Settings").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+  });
+
+  document.getElementById("achievmentsbtn").addEventListener("click", function () {
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("Achievments").classList.remove("hidden");
+  });
+
+  document.getElementById("backbtn4").addEventListener("click", function () {
+    document.getElementById("Achievments").classList.add("hidden");
     document.getElementById("menu").classList.remove("hidden");
   });
 </script>
