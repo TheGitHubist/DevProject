@@ -35,3 +35,7 @@ body {
 #keywordsContainer span {
     pointer-events: auto; /* re-enable clicking on spans */
 }
+
+.hidden {
+  display: none;
+}

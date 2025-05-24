@@ -8,17 +8,39 @@
 
 {% block content %}
 <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-3xl mx-auto">
-        <div class="glass-effect rounded-lg shadow-lg p-6 mb-8">
-            <a href="/game?fight=fight_1" class="btn-menu" >Adventure</a>
-            <a href="/game?fight=fight_2" class="btn-menu" >Rush</a>
-            <button class="btn-menu" >Multiplayer</button>
-            <button class="btn-menu" >Settings</button>
-            <button class="btn-menu" >Achievments</button>
-        </div>
+  <div class="max-w-3xl mx-auto">
+    <!-- Main menu -->
+    <div id="menu" class="glass-effect rounded-lg shadow-lg p-6 mb-8">
+      <button class="btn-menu" id="adventureBtn">Adventure</button>
+      <a href="/game?fight=fight_2" class="btn-menu">Rush</a>
+      <button class="btn-menu">Multiplayer</button>
+      <button class="btn-menu">Settings</button>
+      <button class="btn-menu">Achievments</button>
     </div>
+
+    <!-- Level list (initially hidden) -->
+    <div id="levelList" class="glass-effect rounded-lg shadow-lg p-6 mb-8 hidden">
+      <h2 class="text-xl font-bold mb-4">Choose your level:</h2>
+      <ul class="space-y-2">
+        <li><a href="/game?fight=fight_1" class="btn-menu">Level 1</a></li>
+        <li><a href="/game?fight=fight_2" class="btn-menu">Level 2</a></li>
+        <li><a href="/game?fight=level3" class="btn-menu">Level 3</a></li>
+        <!-- Add more levels as needed -->
+      </ul>
+      <button class="btn-menu mt-4" id="backBtn">Back</button>
+    </div>
+  </div>
 </div>
 
 <script>
+  document.getElementById("adventureBtn").addEventListener("click", function () {
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("levelList").classList.remove("hidden");
+  });
+
+  document.getElementById("backBtn").addEventListener("click", function () {
+    document.getElementById("levelList").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+  });
 </script>
 {% endblock %}
