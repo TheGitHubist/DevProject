@@ -5,14 +5,12 @@ canvas.height = window.innerHeight;
 const slashes = [];
 const lasers = [];
 
-
 class Player {
     constructor() {
         this.hp = 100;
     }
 
     takeDamage(amount) {
-        // Do not update HP locally, only send damage to server
         sendDamageToServer(amount);
     }
 }
@@ -22,61 +20,95 @@ const bossBar = document.getElementById('bossBar');
 const keywordsContainer = document.getElementById('keywordsContainer');
 let keywordsData = {};
 
-// Fetch boss info from server
 async function fetchBoss() {
     const response = await fetch('/api/boss');
     const data = await response.json();
     bossHealth = data.health;
+    boss.key_word = data.key_word;
     updateBossBar();
 }
 
-// Fetch keywords from words.json
 async function fetchKeywords() {
     const response = await fetch('/static/words.json');
     keywordsData = await response.json();
 }
 
-// Update boss HP display
 function updateBossBar() {
     bossBar.innerText = `Boss HP: ${bossHealth}`;
 }
 
-// Display all keywords
 function displayKeywords() {
     keywordsContainer.innerHTML = '';
+    const placedRects = [];
+
     for (const group in keywordsData) {
         const words = keywordsData[group].word;
         words.forEach(word => {
             const wordElem = document.createElement('span');
             wordElem.innerText = word;
-            wordElem.style.marginRight = '15px';
+            wordElem.style.position = 'absolute';
             wordElem.style.cursor = 'pointer';
             wordElem.style.userSelect = 'none';
             wordElem.style.padding = '5px 10px';
-            wordElem.style.border = '1px solid white';
+            wordElem.style.border = '1px solid black';
             wordElem.style.borderRadius = '5px';
-            wordElem.style.display = 'inline-block';
-            wordElem.style.transition = 'background-color 0.3s';
+            wordElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            wordElem.style.color = 'white';
+            wordElem.style.pointerEvents = 'auto';
+            wordElem.style.opacity = '0';
+            wordElem.style.transition = 'opacity 0.5s';
+
+            // Start offscreen to get dimensions
+            wordElem.style.left = '-9999px';
+            wordElem.style.top = '-9999px';
+            keywordsContainer.appendChild(wordElem);
+
+            const elemWidth = wordElem.offsetWidth;
+            const elemHeight = wordElem.offsetHeight;
+
+            let x, y, collision;
+            let attempts = 0;
+            do {
+                x = Math.random() * (window.innerWidth - elemWidth);
+                y = Math.random() * (window.innerHeight - elemHeight);
+                collision = placedRects.some(rect => {
+                    return !(
+                        x + elemWidth < rect.x ||
+                        x > rect.x + rect.width ||
+                        y + elemHeight < rect.y ||
+                        y > rect.y + rect.height
+                    );
+                });
+                attempts++;
+            } while (collision && attempts < 50);
+
+            wordElem.style.left = `${x}px`;
+            wordElem.style.top = `${y}px`;
+
+            placedRects.push({ x, y, width: elemWidth, height: elemHeight });
+
             wordElem.addEventListener('mouseenter', () => {
                 wordElem.style.backgroundColor = 'rgba(255,255,255,0.2)';
             });
             wordElem.addEventListener('mouseleave', () => {
-                wordElem.style.backgroundColor = 'transparent';
+                wordElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
             });
             wordElem.addEventListener('click', () => {
                 handleKeywordClick(group, word);
             });
-            keywordsContainer.appendChild(wordElem);
+
+            // Trigger fade-in
+            requestAnimationFrame(() => {
+                wordElem.style.opacity = '1';
+            });
         });
     }
 }
 
-// Handle keyword click
+
 async function handleKeywordClick(group, word) {
-    // Check if clicked word is the correct keyword for the boss
-    if (boss.key_word && boss.key_word[group] && boss.key_word[group].includes(word)) {
-        // Send damage to boss
-        const damageAmount = 50; // Arbitrary damage value
+    if (boss.key_word && word === boss.key_word) {
+        const damageAmount = 50;
         const response = await fetch('/api/boss/damage', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -89,26 +121,30 @@ async function handleKeywordClick(group, word) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }
-    } else {
-        // Wrong keyword clicked, maybe do nothing or feedback
-        alert('Wrong keyword!');
     }
 }
 
-// Initialize boss object locally for checking keywords
-let boss = {
-    key_word: {}
-};
+let boss = { key_word: {} };
 
-// Initialize game additions
 async function initGameBoss() {
     await fetchBoss();
     await fetchKeywords();
-    boss.key_word = keywordsData;
     displayKeywords();
     setInterval(() => {
         displayKeywords();
-    }, 15000);
+    }, 10000);
+
+    let visibleCount = 0;
+    keywordsContainer.style.display = 'none';
+    setInterval(() => {
+        visibleCount++;
+        if (visibleCount <= 2) {
+            keywordsContainer.style.display = 'inline-block';
+        } else {
+            keywordsContainer.style.display = 'none';
+            if (visibleCount === 3) visibleCount = 0;
+        }
+    }, 5000);
 }
 
 initGameBoss();
@@ -267,7 +303,7 @@ function updateHPBar(hp) {
     document.getElementById("hpBar").innerText = `HP: ${hp}`;
 }
 
-setInterval(spawnShurikenFromBorder, 60);
+setInterval(spawnShurikenFromBorder, 600);
 
 setInterval(() => {
 if (Math.random() < 0.5) {
@@ -275,7 +311,7 @@ if (Math.random() < 0.5) {
 } else {
     lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
 }
-}, 400);
+}, 4000);
 
 
 function sendDamageToServer(amount) {
