@@ -18,11 +18,8 @@ players = {}
 
 from game_logic.boss import Boss
 
-# Initialize a global boss instance
-boss = Boss("The Overlord", {
-    "conquest": ["conquest", "reign", "rule", "dominion"],
-    "despair": ["despair", "pain", "sorrow", "grief"]
-})
+# Initialize a global boss instance with a single fixed keyword
+boss = Boss("The Overlord", "conquest")
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
@@ -467,9 +464,11 @@ def get_background():
 @login_required
 def game():
     username = session['user']
+    fight_script = request.args.get('fight', 'fight_2')
+    fight_script = 'js/' + fight_script
     # Create a new player object at the start of the game, replacing any existing one
     players[username] = Player()
-    return render_template('game.html')
+    return render_template('game.html', fight_script=fight_script)
 
 @app.route('/api/boss', methods=['GET'])
 @login_required
@@ -477,7 +476,8 @@ def get_boss():
     global boss
     return jsonify({
         'name': boss.name,
-        'health': boss.health
+        'health': boss.health,
+        'key_word': boss.key_word  # now a string
     })
 
 @app.route('/api/boss/damage', methods=['POST'])
