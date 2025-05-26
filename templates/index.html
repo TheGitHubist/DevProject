@@ -44,10 +44,10 @@
     <div id="Settings" class="glass-effect rounded-lg shadow-lg p-6 mb-8 hidden">
       <h2 class="text-xl font-bold mb-4">Difficulty:</h2>
       <ul class="space-y-2">
-        <li><a href="/game?fight=fight_1" class="btn-menu">Easy</a></li>
-        <li><a href="/game?fight=fight_2" class="btn-menu">Medium</a></li>
-        <li><a href="/game?fight=level3" class="btn-menu">Hard</a></li>
-        <!-- Add more levels as needed -->
+        <li><button onclick="set_easy()" value="easy" class="btn-menu">Easy</button></li>
+        <li><button onclick="set_medium()" value="medium" class="btn-menu">Medium</button></li>
+        <li><button onclick="set_hard()" value="hard" class="btn-menu">Hard</button></li>
+        <li><button onclick="set_inferno()" value="inferno" class="btn-menu">Inferno</button></li>
       </ul>
       <button class="btn-menu mt-4" id="backbtn3">Back</button>
     </div>

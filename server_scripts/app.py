@@ -444,6 +444,74 @@ def update_name():
             return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'No name provided'}), 400
 
+@app.route('/set_easy', methods=['POST'])
+@login_required
+def set_easy():
+    data = request.get_json()
+    if 'easy' in data:
+        username = session['user']
+        db = get_db()
+        user = get_user_by_username(username)
+        if user:
+            players[username].difficulty = 1  # Set difficulty to easy
+            db.execute(
+                'UPDATE profiles SET easy = ? WHERE user_id = ?',
+                (data['easy'], user['id'])
+            )
+            db.commit()
+            return jsonify({'success': True})
+        
+@app.route('/set_medium', methods=['POST'])
+@login_required
+def set_medium():
+    data = request.get_json()
+    if 'medium' in data:
+        username = session['user']
+        db = get_db()
+        user = get_user_by_username(username)
+        if user:
+            players[username].difficulty = 2  # Set difficulty to medium
+            db.execute(
+                'UPDATE profiles SET medium = ? WHERE user_id = ?',
+                (data['medium'], user['id'])
+            )
+            db.commit()
+            return jsonify({'success': True})
+
+@app.route('/set_hard', methods=['POST'])
+@login_required
+def set_hard():
+    data = request.get_json()
+    if 'hard' in data:
+        username = session['user']
+        db = get_db()
+        user = get_user_by_username(username)
+        if user:
+            players[username].difficulty = 3 # Set difficulty to hard
+            db.execute(
+                'UPDATE profiles SET easy = ? WHERE user_id = ?',
+                (data['easy'], user['id'])
+            )
+            db.commit()
+            return jsonify({'success': True})
+
+@app.route('/set_inferno', methods=['POST'])
+@login_required
+def set_inferno():
+    data = request.get_json()
+    if 'inferno' in data:
+        username = session['user']
+        db = get_db()
+        user = get_user_by_username(username)
+        if user:
+            players[username].difficulty = 4 # Set difficulty to inferno
+            db.execute(
+                'UPDATE profiles SET easy = ? WHERE user_id = ?',
+                (data['easy'], user['id'])
+            )
+            db.commit()
+            return jsonify({'success': True})
+
 @app.route('/get_background')
 def get_background():
     if 'user' in session:

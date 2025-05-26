@@ -1,11 +1,16 @@
 class Player {
     constructor() {
         this.hp = 100;
+        this.difficulty = 1;
     }
 
     takeDamage(amount) {
         this.hp -= amount;
         if (this.hp < 0) this.hp = 0;
+    }
+
+    setDifficulty(difficulty) {
+        this.difficulty = difficulty;
     }
 }
 
