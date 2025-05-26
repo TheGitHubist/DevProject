@@ -303,7 +303,7 @@ function updateHPBar(hp) {
     document.getElementById("hpBar").innerText = `HP: ${hp}`;
 }
 
-setInterval(spawnShurikenFromBorder, 600);
+setInterval(spawnShurikenFromBorder, 60);
 
 setInterval(() => {
 if (Math.random() < 0.5) {
@@ -311,7 +311,7 @@ if (Math.random() < 0.5) {
 } else {
     lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
 }
-}, 4000);
+}, 400);
 
 
 function sendDamageToServer(amount) {
