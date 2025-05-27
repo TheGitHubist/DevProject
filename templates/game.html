@@ -1,21 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mouse Dodge Game</title>
-    <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; }
-        canvas { display: block; background-color: black; }
-        #hpBar {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-family: sans-serif;
-        }
-    </style>
+    <title>WorldEnderWord</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
 </head>
-<body>
+<body class="game-body">
     <img id="shurikenSprite" src="/static/sprites/shuriken.png" style="display: none;">
     <div id="hpBar">HP: 100</div>
     <div id="bossBar" style="position: absolute; top: 40px; left: 10px; color: red; font-family: sans-serif; font-weight: bold;">

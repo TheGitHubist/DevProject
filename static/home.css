@@ -39,3 +39,7 @@ body {
 .hidden {
   display: none;
 }
+
+body.game-body {
+    cursor: none;
+}
