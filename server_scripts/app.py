@@ -453,10 +453,9 @@ def set_easy():
         db = get_db()
         user = get_user_by_username(username)
         if user:
-            players[username].difficulty = 1  # Set difficulty to easy
             db.execute(
-                'UPDATE profiles SET easy = ? WHERE user_id = ?',
-                (data['easy'], user['id'])
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                (1, username)
             )
             db.commit()
             return jsonify({'success': True})
@@ -470,10 +469,9 @@ def set_medium():
         db = get_db()
         user = get_user_by_username(username)
         if user:
-            players[username].difficulty = 2  # Set difficulty to medium
             db.execute(
-                'UPDATE profiles SET medium = ? WHERE user_id = ?',
-                (data['medium'], user['id'])
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                (2, username)
             )
             db.commit()
             return jsonify({'success': True})
@@ -487,10 +485,9 @@ def set_hard():
         db = get_db()
         user = get_user_by_username(username)
         if user:
-            players[username].difficulty = 3 # Set difficulty to hard
             db.execute(
-                'UPDATE profiles SET easy = ? WHERE user_id = ?',
-                (data['easy'], user['id'])
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                (5, username)
             )
             db.commit()
             return jsonify({'success': True})
@@ -503,11 +500,11 @@ def set_inferno():
         username = session['user']
         db = get_db()
         user = get_user_by_username(username)
+        print (f"Setting inferno difficulty for user: {username}")
         if user:
-            players[username].difficulty = 4 # Set difficulty to inferno
             db.execute(
-                'UPDATE profiles SET easy = ? WHERE user_id = ?',
-                (data['easy'], user['id'])
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                (10, username)
             )
             db.commit()
             return jsonify({'success': True})
@@ -536,6 +533,20 @@ def game():
     fight_script = 'js/' + fight_script
     # Create a new player object at the start of the game, replacing any existing one
     players[username] = Player()
+    # Reset boss health when a new game starts
+    global boss
+    boss.health = 1000
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT difficulty FROM profiles WHERE user_id = (SELECT id FROM users WHERE username = ?)', (username,))
+    difficulty = cursor.fetchone()
+    print(f"Difficulty for {username}: {difficulty[0]}")
+    # Set the player's difficulty based on the profile, or default to medium if not set
+    if difficulty:
+        players[username].setDifficulty(difficulty[0])
+    else:
+        # Default to medium difficulty if not set
+        players[username].setDifficulty(10)
     return render_template('game.html', fight_script=fight_script)
 
 @app.route('/api/boss', methods=['GET'])
@@ -546,6 +557,15 @@ def get_boss():
         'name': boss.name,
         'health': boss.health,
         'key_word': boss.key_word  # now a string
+    })
+    
+@app.route('/api/difficulty', methods=['GET'])
+@login_required
+def get_difficulty():
+    difficulty = players[session['user']].difficulty
+    print(difficulty)
+    return jsonify({
+        'difficulty': difficulty
     })
 
 @app.route('/api/boss/damage', methods=['POST'])

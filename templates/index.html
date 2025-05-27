@@ -103,5 +103,94 @@
     document.getElementById("Achievments").classList.add("hidden");
     document.getElementById("menu").classList.remove("hidden");
   });
+
+  // Difficulty setting functions
+  function set_easy() {
+    fetch('/set_easy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ easy: true })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Difficulty set to Easy');
+      } else {
+        alert('Failed to set difficulty');
+      }
+    })
+    .catch(error => {
+      alert('Error setting difficulty');
+      console.error('Error:', error);
+    });
+  }
+
+  function set_medium() {
+    fetch('/set_medium', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ medium: true })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Difficulty set to Medium');
+      } else {
+        alert('Failed to set difficulty');
+      }
+    })
+    .catch(error => {
+      alert('Error setting difficulty');
+      console.error('Error:', error);
+    });
+  }
+
+  function set_hard() {
+    fetch('/set_hard', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ hard: true })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Difficulty set to Hard');
+      } else {
+        alert('Failed to set difficulty');
+      }
+    })
+    .catch(error => {
+      alert('Error setting difficulty');
+      console.error('Error:', error);
+    });
+  }
+
+  function set_inferno() {
+    fetch('/set_inferno', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ inferno: true })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Difficulty set to Inferno');
+      } else {
+        alert('Failed to set difficulty');
+      }
+    })
+    .catch(error => {
+      alert('Error setting difficulty');
+      console.error('Error:', error);
+    });
+  }
 </script>
 {% endblock %}

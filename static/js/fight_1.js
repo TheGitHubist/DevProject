@@ -8,17 +8,28 @@ const lasers = [];
 class Player {
     constructor() {
         this.hp = 100;
+        this.difficulty = 1; // 1 = easy, 2 = medium, 3 = hard
     }
 
     takeDamage(amount) {
         sendDamageToServer(amount);
     }
+
+    setDifficulty(level) {
+        this.difficulty = level;
+    }
+
+    getDifficulty() {
+        return this.difficulty;
+    }
 }
 
 let bossHealth = 1000;
 const bossBar = document.getElementById('bossBar');
+const difficulty = document.getElementById('difficulty');
 const keywordsContainer = document.getElementById('keywordsContainer');
 let keywordsData = {};
+let wordElements = []; // Store word elements for reuse
 
 async function fetchBoss() {
     const response = await fetch('/api/boss');
@@ -28,13 +39,28 @@ async function fetchBoss() {
     updateBossBar();
 }
 
+function updateBossBar() {
+    bossBar.innerHTML = `Boss Health: ${bossHealth} `;
+}
+
+function updatedifficulty() {
+    difficulty.innerHTML = `Difficulty: ${diff}`;
+}
+
+async function fetchDifficulty() {
+    const response = await fetch('/api/difficulty');
+    const data = await response.json();
+    player.setDifficulty(data.difficulty);
+    diff = player.getDifficulty();
+    updatedifficulty();
+    setIntervals(diff);
+    updateshuri();
+    updateweapon();
+}
+
 async function fetchKeywords() {
     const response = await fetch('/static/words.json');
     keywordsData = await response.json();
-}
-
-function updateBossBar() {
-    bossBar.innerText = `Boss HP: ${bossHealth}`;
 }
 
 function displayKeywords() {
@@ -105,7 +131,6 @@ function displayKeywords() {
     }
 }
 
-
 async function handleKeywordClick(group, word) {
     if (boss.key_word && word === boss.key_word) {
         const damageAmount = 50;
@@ -117,10 +142,13 @@ async function handleKeywordClick(group, word) {
         const data = await response.json();
         bossHealth = data.health;
         updateBossBar();
+        keywordsContainer.style.display = 'none';
         if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }
+    } else {
+        keywordsContainer.style.display = 'none';
     }
 }
 
@@ -129,6 +157,7 @@ let boss = { key_word: {} };
 async function initGameBoss() {
     await fetchBoss();
     await fetchKeywords();
+    await fetchDifficulty();
     displayKeywords();
     setInterval(() => {
         displayKeywords();
@@ -138,11 +167,11 @@ async function initGameBoss() {
     keywordsContainer.style.display = 'none';
     setInterval(() => {
         visibleCount++;
-        if (visibleCount <= 2) {
+        if (visibleCount <= 1) {
             keywordsContainer.style.display = 'inline-block';
         } else {
             keywordsContainer.style.display = 'none';
-            if (visibleCount === 3) visibleCount = 0;
+            if (visibleCount === 2) visibleCount = 0;
         }
     }, 5000);
 }
@@ -258,6 +287,7 @@ class LaserBeamAttack {
 
 
 const player = new Player();
+let diff = player.getDifficulty();
 let playerX = canvas.width / 2;
 let playerY = canvas.height / 2;
 const playerRadius = 10;
@@ -303,15 +333,46 @@ function updateHPBar(hp) {
     document.getElementById("hpBar").innerText = `HP: ${hp}`;
 }
 
-setInterval(spawnShurikenFromBorder, 600 / difficulty);
+const shuri = document.getElementById('shuri');
+const weapon = document.getElementById('weapon');
 
-setInterval(() => {
-if (Math.random() < 0.5) {
-    slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
-} else {
-    lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
+let shurikenIntervalId;
+let weaponIntervalId;
+let shurispwanint;
+let weaponspwanint;
+
+function setIntervals(diff) {
+    shurispwanint = 600 / diff;
+    weaponspwanint = 4000 / diff;
+
+    if (shurikenIntervalId) {
+        clearInterval(shurikenIntervalId);
+    }
+    if (weaponIntervalId) {
+        clearInterval(weaponIntervalId);
+    }
+
+    shurikenIntervalId = setInterval(spawnShurikenFromBorder, shurispwanint);
+
+    weaponIntervalId = setInterval(() => {
+        if (Math.random() < 0.5) {
+            slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
+        } else {
+            lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
+        }
+    }, weaponspwanint);
 }
-}, 4000 / difficulty);
+
+function updateshuri() {
+    shuri.innerText = `Shuri: ${shurispwanint}`;
+}
+
+function updateweapon() {
+    weapon.innerText = `Weapon: ${weaponspwanint}`;
+}
+
+// Initialize intervals with default difficulty
+setIntervals(player.getDifficulty());
 
 
 function sendDamageToServer(amount) {

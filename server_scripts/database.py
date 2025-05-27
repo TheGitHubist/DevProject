@@ -29,6 +29,7 @@ def init_db():
         picture TEXT,
         background_color TEXT DEFAULT '#f3f4f6',
         background_image TEXT,
+        difficulty INTEGER DEFAULT 1,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
