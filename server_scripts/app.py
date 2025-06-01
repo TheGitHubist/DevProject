@@ -629,8 +629,13 @@ def get_boss():
     else:
         boss = player_bosses.get(username)
         if not boss:
+            boss_word = "conquest"
+            for i in range(len(levels)):
+                if fight == levels[i]:
+                    boss_word = words[i]
+                    break
             boss = Boss()
-            boss.set_attributes("Mini Boss", "conquest", fight, 200, False)
+            boss.set_attributes("Mini Boss", boss_word, fight, 200, False)
             player_bosses[username] = boss
     print(f"[DEBUG] fight={fight}, boss.health={boss.health}")
 
