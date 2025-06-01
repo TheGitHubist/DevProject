@@ -188,7 +188,7 @@ async function initGameBoss() {
 initGameBoss();
 
 class ProjectileAttack {
-    constructor(name, damage, speed, x, y, targetX, targetY, sprite, scale = 3, angleOverride = null) {
+    constructor(name, damage, speed, x, y, targetX, targetY, sprite, scale = 3) {
         this.name = name;
         this.damage = damage;
         this.speed = speed;
@@ -198,21 +198,15 @@ class ProjectileAttack {
         this.sprite = sprite;
         this.scale = scale;
 
-        if (angleOverride !== null) {
-            this.angle = angleOverride;
-            this.vx = Math.cos(this.angle) * speed;
-            this.vy = Math.sin(this.angle) * speed;
-        } else {
-            // Compute angle to player at spawn
-            const dx = targetX - x;
-            const dy = targetY - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            this.vx = (dx / distance) * speed;
-            this.vy = (dy / distance) * speed;
+        // Compute angle to player at spawn
+        const dx = targetX - x;
+        const dy = targetY - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        this.vx = (dx / distance) * speed;
+        this.vy = (dy / distance) * speed;
 
-            // Store angle in radians so it always points at the player
-            this.angle = Math.atan2(dy, dx); // Use exact angle without offset
-        }
+        // 💡 Store angle in radians so it always points at the player
+        this.angle = Math.atan2(dy, dx) + 90 * (Math.PI / 180); // Convert 45 degrees to radians
     }
 
     move() {
@@ -229,10 +223,10 @@ class ProjectileAttack {
     }
 
     draw(ctx) {
-        const size = 32 * this.scale; // scale the image
+        const size = 32 * this.scale; // 🔍 scale the image
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle); // Always point toward player or direction
+        ctx.rotate(this.angle); // ✅ Always point toward player
         ctx.drawImage(this.sprite, -size / 2, -size / 2, size, size);
         ctx.restore();
     }
@@ -282,7 +276,8 @@ document.addEventListener('mousemove', (e) => {
     playerY = e.clientY;
 });
 
-let arrowSprite = null;
+let knifeSprite = null;
+let redKnifeSprite = null;
 
 function loadSprite(src) {
     return new Promise((resolve, reject) => {
@@ -294,12 +289,13 @@ function loadSprite(src) {
 }
 
 async function preloadSprites() {
-    arrowSprite = await loadSprite('/static/sprites/Arrow.png');
+    knifeSprite = await loadSprite('/static/sprites/knife.png');
+    redKnifeSprite = await loadSprite('/static/sprites/red_knife.png');
 }
 
 preloadSprites();
 
-function spawnBasicArrowFromBorder() {
+function spawnShurikenFromBorder() {
     const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
     let x, y;
 
@@ -317,145 +313,120 @@ function spawnBasicArrowFromBorder() {
         y = Math.random() * canvas.height;
     }
 
-    if (arrowSprite) {
+    if (knifeSprite) {
         bullets.push(new ProjectileAttack(
-            "arrow_basic",
+            "shuriken",
             1,
-            4,
+            3,
             x,
             y,
             playerX,
             playerY,
-            arrowSprite,
-            1.5
+            knifeSprite
         ));
     }
 }
 
-function spawnCircularArrowAttack(centerX, centerY) {
-    if (!arrowSprite) return;
-    const numArrows = 12;
-    const angleStep = (2 * Math.PI) / numArrows;
-
-    for (let i = 0; i < numArrows; i++) {
-        const angle = i * angleStep;
-        // Arrows spawn at centerX, centerY and move outward in direction of angle
-        bullets.push(new ProjectileAttack(
-            "arrow_circular",
-            2,
-            3,
-            centerX,
-            centerY,
-            0,
-            0,
-            arrowSprite,
-            1.5,
-            angle
-        ));
-    }
+function updateHPBar(hp) {
+    document.getElementById("hpBar").innerText = `HP: ${hp}`;
 }
 
-function spawnGatlingArrowAttack(centerX, centerY) {
-    if (!arrowSprite) return;
-    const arrowsToSpawn = 10;
-    let spawned = 0;
+const shuri = document.getElementById('shuri');
+const weapon = document.getElementById('weapon');
 
-    const gatlingInterval = setInterval(() => {
-        if (spawned >= arrowsToSpawn) {
-            clearInterval(gatlingInterval);
-            return;
-        }
-        bullets.push(new ProjectileAttack(
-            "arrow_gatling",
-            3,
-            5,
-            centerX,
-            centerY,
-            playerX,
-            playerY,
-            arrowSprite,
-            3
-        ));
-        spawned++;
-    }, 100);
-}
-
-let basicArrowIntervalId;
-let circularArrowIntervalId;
-let gatlingArrowIntervalId;
+let shurikenIntervalId;
+let weaponIntervalId;
+let shurispwanint;
+let weaponspwanint;
 
 function setIntervals(diff) {
-<<<<<<< HEAD
     shurispwanint = Math.floor(600 / diff);
     weaponspwanint = Math.floor(4000 / diff);
-=======
-    if (diff < 1) diff = 1; // safeguard against zero or negative difficulty
->>>>>>> 4fa709e7eedef8c179c0fbe78f732d0afc2d4a44
 
-    const basicInterval = 600 / diff;
-    const circularInterval = 8000 / diff;
-    const gatlingInterval = 12000 / diff;
-
-    console.log(`Setting intervals with diff=${diff}, basic=${basicInterval}, circular=${circularInterval}, gatling=${gatlingInterval}`);
-
-    if (basicArrowIntervalId) {
-        clearInterval(basicArrowIntervalId);
+    if (shurikenIntervalId) {
+        clearInterval(shurikenIntervalId);
     }
-    if (circularArrowIntervalId) {
-        clearInterval(circularArrowIntervalId);
-    }
-    if (gatlingArrowIntervalId) {
-        clearInterval(gatlingArrowIntervalId);
+    if (weaponIntervalId) {
+        clearInterval(weaponIntervalId);
     }
 
-    basicArrowIntervalId = setInterval(spawnBasicArrowFromBorder, basicInterval);
+    shurikenIntervalId = setInterval(spawnShurikenFromBorder, shurispwanint);
 
-    circularArrowIntervalId = setInterval(() => {
-        // Spawn circular arrows at a random border position on canvas
-        let x, y;
-        const side = Math.floor(Math.random() * 4);
-        if (side === 0) { // Top
-            x = Math.random() * canvas.width;
-            y = 0;
-        } else if (side === 1) { // Right
-            x = canvas.width;
-            y = Math.random() * canvas.height;
-        } else if (side === 2) { // Bottom
-            x = Math.random() * canvas.width;
-            y = canvas.height;
-        } else { // Left
-            x = 0;
-            y = Math.random() * canvas.height;
+    weaponIntervalId = setInterval(() => {
+        if (Math.random() < 0.5) {
+            slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
+        } else {
+            if (redKnifeSprite) {
+                // Spawn red knife projectile dealing 100 damage
+                const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
+                let x, y;
+
+                if (side === 0) { // Top
+                    x = Math.random() * canvas.width;
+                    y = -20;
+                } else if (side === 1) { // Right
+                    x = canvas.width + 20;
+                    y = Math.random() * canvas.height;
+                } else if (side === 2) { // Bottom
+                    x = Math.random() * canvas.width;
+                    y = canvas.height + 20;
+                } else { // Left
+                    x = -20;
+                    y = Math.random() * canvas.height;
+                }
+
+                bullets.push(new ProjectileAttack(
+                    "red_knife",
+                    100,
+                    5,
+                    x,
+                    y,
+                    playerX,
+                    playerY,
+                    redKnifeSprite
+                ));
+            }
         }
-        spawnCircularArrowAttack(x, y);
-    }, circularInterval);
-
-    gatlingArrowIntervalId = setInterval(() => {
-        // Spawn gatling arrows at random position on canvas
-        const x = Math.random() * canvas.width * 0.8 + canvas.width * 0.1;
-        const y = Math.random() * canvas.height * 0.8 + canvas.height * 0.1;
-        spawnGatlingArrowAttack(x, y);
-    }, gatlingInterval);
+    }, weaponspwanint);
 }
 
 function updateshuri() {
-    shuri.innerText = `Basic Arrow Attack Interval: ${600 / diff}`;
+    shuri.innerText = `Shuri: ${shurispwanint}`;
 }
 
 function updateweapon() {
-    weapon.innerText = `Circular Arrow Attack Interval: ${8000 / diff}, Gatling Arrow Attack Interval: ${12000 / diff}`;
+    weapon.innerText = `Weapon: ${weaponspwanint}`;
+}
+
+// Initialize intervals with default difficulty
+setIntervals(player.getDifficulty());
+
+function sendDamageToServer(amount) {
+    fetch('/api/player/hp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({damage: amount})
+    }).then(res => res.json()).then(data => {
+        // Update HP bar only from server response
+        updateHPBar(data.hp);
+        // Update local player HP to server authoritative HP
+        player.hp = data.hp;
+        // Redirect to index.html if HP is 0 or less
+        if (player.hp <= 0) {
+            window.location.href = '/home';
+        }
+    });
 }
 
 function update() {
     bullets.forEach(b => b.move());
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        const b = bullets[i];
+    bullets.forEach(b => {
         if (b.isCollidingWith(playerX, playerY, playerRadius)) {
             player.takeDamage(b.damage);
-            bullets.splice(i, 1);
+            bullets.splice(bullets.indexOf(b), 1);
         }
-    }
+    });
 
     slashes.forEach(s => {
         if (s.isCollidingWith(playerX, playerY, playerRadius)) {
@@ -484,6 +455,34 @@ function loop() {
     update();
     draw();
     requestAnimationFrame(loop);
+    console.log(player.hp)
 }
+
+function updatePlayerHPFromRush() {
+    if (window.isRush) {
+        const storedHP = localStorage.getItem('playerHP');
+        if (storedHP !== null) {
+            const hp = parseInt(storedHP, 10);
+            player.hp = hp;
+            updateHPBar(hp);
+
+            // Immediately sync the server-side player object with this HP
+            fetch('/api/player/hp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ damage: 100 - hp })  // Simulate damage to bring server HP to same level
+            }).then(res => res.json()).then(data => {
+                console.log('Server HP synced:', data.hp);
+            });
+        } else {
+            console.warn('No stored HP found');
+        }
+    }
+    localStorage.removeItem('playerHP');
+}
+
+
+
+updatePlayerHPFromRush();
 
 loop();
