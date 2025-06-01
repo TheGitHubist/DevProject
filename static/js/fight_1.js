@@ -379,8 +379,8 @@ let shurispwanint;
 let weaponspwanint;
 
 function setIntervals(diff) {
-    shurispwanint = 600 / diff;
-    weaponspwanint = 4000 / diff;
+    shurispwanint = Math.floor(600 / diff);
+    weaponspwanint = Math.floor(4000 / diff);
 
     if (shurikenIntervalId) {
         clearInterval(shurikenIntervalId);

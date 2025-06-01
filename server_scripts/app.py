@@ -53,7 +53,8 @@ def set_world_boss():
 def create_world_boss():
     conn = get_db()
     cursor = conn.cursor()
-    num_players = cursor.execute('SELECT user_id FROM users',).fetchone()[-1]
+    result = cursor.execute('SELECT user_id FROM users').fetchall()
+    num_players = len(result) if result else 1
     base = 200 * num_players
     scaling = base * ((num_players + 100) / 100)
     raw_hp = base + scaling
@@ -601,7 +602,7 @@ def game():
         check_world_boss()  # Ensure world boss exists
         global world_boss
         fight_script = f'js/{world_boss.script}'
-        cursor.execute('SELECT AVG(difficulty) FROM profiles WHERE user_id = (SELECT user_id FROM users WHERE username = ?)', (username,))
+        cursor.execute('SELECT AVG(difficulty) FROM profiles')
         difficulty = cursor.fetchone()[0]
         players[username].setDifficulty(difficulty)
     else:
@@ -612,6 +613,7 @@ def game():
                 boss_word = words[i]
                 break
         boss = Boss()
+        print(f"[DEBUG] Initializing player boss for {username} with word '{boss_word}'")
         boss.set_attributes("Mini Boss", boss_word, fight_script_name, 200, False)
         player_bosses[username] = boss
         print(f"Player {username}'s boss initialized.")
@@ -637,8 +639,8 @@ def get_boss():
             boss = Boss()
             boss.set_attributes("Mini Boss", boss_word, fight, 200, False)
             player_bosses[username] = boss
-    print(f"[DEBUG] fight={fight}, boss.health={boss.health}")
 
+    print(f"[DEBUG-GET] fight={fight}, boss.health={boss.health}, boss.name={boss.name}, boss.key_word={boss.key_word}")
     return jsonify({
         'name': boss.name,
         'health': boss.health,
@@ -665,9 +667,15 @@ def damage_boss():
     else:
         boss = player_bosses.get(username)
         if not boss:
-            boss = Boss("Mini Boss", "slay")
+            boss_word = "conquest"
+            for i in range(len(levels)):
+                if fight == levels[i]:
+                    boss_word = words[i]
+                    break
+            boss = Boss()
+            boss.set_attributes("Mini Boss", boss_word, fight, 200, False)
             player_bosses[username] = boss
-
+    print(f"[DEBUG-DMG] fight={fight}, boss.health={boss.health}")
     data = request.get_json()
     damage = data.get('damage', 0)
     boss.take_dmg(damage)

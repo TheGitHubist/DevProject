@@ -160,8 +160,8 @@ async function handleKeywordClick(group, word) {
 let boss = { key_word: {} };
 
 async function initGameBoss() {
-    await fetchBoss();
     await fetchKeywords();
+    await fetchBoss();
     await fetchDifficulty();
     displayKeywords();
     setInterval(() => {
@@ -366,8 +366,8 @@ let shurispwanint;
 let weaponspwanint;
 
 function setIntervals(diff) {
-    shurispwanint = 600 / diff;
-    weaponspwanint = 4000 / diff;
+    shurispwanint = Math.floor(600 / diff);
+    weaponspwanint = Math.floor(4000 / diff);
 
     if (shurikenIntervalId) {
         clearInterval(shurikenIntervalId);
