@@ -5,6 +5,7 @@ import sqlite3
 from functools import wraps
 import hashlib
 from werkzeug.utils import secure_filename
+import random
 
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -18,8 +19,59 @@ players = {}
 
 from game_logic.boss import Boss
 
-# Initialize a global boss instance with a single fixed keyword
-boss = Boss("The Overlord", "conquest")
+levels = ['fight_1', 'fight_2', 'fight_3', 'fight_4']
+words = ['conquest', 'despair', 'hunt', 'blood']
+
+# Shared world boss
+world_boss = Boss()
+
+def check_world_boss():
+    """Check if the world boss exists, if not create it"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM world_boss',)
+    boss = cursor.fetchone()
+    
+    if not boss:
+        create_world_boss()  # Create world boss if it doesn't exist
+    else:
+        set_world_boss()  # Ensure world boss is set correctly
+        
+def set_world_boss():
+    """Set the world boss with a default name and key word"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT name, health, level_model, key_word FROM world_boss ORDER BY boss_id DESC LIMIT 1',)
+    wb_name, wb_health, wb_script, wb_key_word = cursor.fetchone() # Get the last row (world boss)
+    print(f"World boss fetched: {wb_name} with health {wb_health} and key word '{wb_key_word}'")
+    # if wb_health == 0:
+    #     print("World boss health is 0, creating a new one.")
+    #     create_world_boss()
+    world_boss.set_attributes(wb_name, wb_key_word, wb_script, wb_health, True)  # Set world boss attributes
+    print(f"World boss set: {world_boss.name} with health {world_boss.health} and key word '{world_boss.key_word}'")
+
+def create_world_boss():
+    conn = get_db()
+    cursor = conn.cursor()
+    num_players = cursor.execute('SELECT user_id FROM users',).fetchone()[-1]
+    base = 200 * num_players
+    scaling = base * ((num_players + 100) / 100)
+    raw_hp = base + scaling
+    raw_hp *= (1 + (num_players/100.0))  # Scale by number of players
+    # Round to nearest multiple of 50
+    print (f"Raw HP before rounding: {raw_hp}")
+    rounded_hp = int(round(raw_hp / 50.0) * 50)
+    cursor.execute('''
+        INSERT INTO world_boss (name, health, level_model, key_word, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    ''', ('The Overlord',rounded_hp, random.choice(levels), random.choice(words), datetime.now().isoformat()))
+    conn.commit()
+    print("World boss created.")
+    set_world_boss()  # Ensure world boss is set correctly
+
+# Per-player bosses
+player_bosses = {}
+
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
@@ -138,7 +190,7 @@ def update_user_profile(username, profile_data):
             profile_data.get('picture'),
             profile_data.get('background_color', '#f3f4f6'),
             profile_data.get('background_image'),
-            user['id']
+            user['user_id']
         ))
         db.commit()
 
@@ -154,7 +206,7 @@ def get_profile_picture(username):
     if not user:
         return '', 404
         
-    profile = query_db('SELECT picture FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    profile = query_db('SELECT picture FROM profiles WHERE user_id = ?', [user['user_id']], one=True)
     if not profile or not profile['picture']:
         # Return default avatar if no profile picture exists
         return redirect(url_for('static', filename='default-avatar.png'))
@@ -200,7 +252,7 @@ def load_user_profile(username):
     if not user:
         return None
         
-    profile = query_db('SELECT * FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    profile = query_db('SELECT * FROM profiles WHERE user_id = ?', [user['user_id']], one=True)
     if profile:
         background_image_url = None
         if 'background_image' in profile.keys() and profile['background_image']:
@@ -332,7 +384,7 @@ def update_profile_picture():
             app.logger.debug(f"Updating profile picture for user: {username}, file path: {filepath} picture_url: {picture_url}")
             db.execute(
                 'UPDATE profiles SET picture = ? WHERE user_id = ?',
-                (picture_url, user['id'])
+                (picture_url, user['user_id'])
             )
             db.commit()
             return jsonify({
@@ -397,7 +449,7 @@ def get_background_image(username):
         app.logger.debug(f'User not found: {username}')
         return '', 404
         
-    profile = query_db('SELECT background_image FROM profiles WHERE user_id = ?', [user['id']], one=True)
+    profile = query_db('SELECT background_image FROM profiles WHERE user_id = ?', [user['user_id']], one=True)
     if not profile:
         app.logger.debug('No profile found for user')
         return '', 404
@@ -438,7 +490,7 @@ def update_name():
         if user:
             db.execute(
                 'UPDATE profiles SET name = ? WHERE user_id = ?',
-                (data['name'], user['id'])
+                (data['name'], user['user_id'])
             )
             db.commit()
             return jsonify({'success': True})
@@ -454,7 +506,7 @@ def set_easy():
         user = get_user_by_username(username)
         if user:
             db.execute(
-                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT user_id FROM users WHERE username = ?)',
                 (1, username)
             )
             db.commit()
@@ -470,7 +522,7 @@ def set_medium():
         user = get_user_by_username(username)
         if user:
             db.execute(
-                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT user_id FROM users WHERE username = ?)',
                 (2, username)
             )
             db.commit()
@@ -486,7 +538,7 @@ def set_hard():
         user = get_user_by_username(username)
         if user:
             db.execute(
-                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT user_id FROM users WHERE username = ?)',
                 (5, username)
             )
             db.commit()
@@ -503,7 +555,7 @@ def set_inferno():
         print (f"Setting inferno difficulty for user: {username}")
         if user:
             db.execute(
-                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)',
+                'UPDATE profiles SET difficulty = ? WHERE user_id = (SELECT user_id FROM users WHERE username = ?)',
                 (10, username)
             )
             db.commit()
@@ -525,40 +577,69 @@ def get_background():
         'background_image': None
     })
     
+
 @app.route('/game')
 @login_required
 def game():
     username = session['user']
-    fight_script = request.args.get('fight_1', 'fight_2', 'fight_3', 'fight_4')
+    fight_script_name = request.args.get('fight', 'fight_2')
     rush = request.args.get('rush', 'false').lower() == 'true'
-    fight_script = 'js/' + fight_script
-    # Create a new player object at the start of the game, replacing any existing one
+    fight_script = f'js/{fight_script_name}'
+
+    # Always initialize/reset player
     players[username] = Player()
-    # Reset boss health when a new game starts
-    global boss
-    boss.health = 200
+
+    # Set difficulty
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT difficulty FROM profiles WHERE user_id = (SELECT id FROM users WHERE username = ?)', (username,))
+    cursor.execute('SELECT difficulty FROM profiles WHERE user_id = (SELECT user_id FROM users WHERE username = ?)', (username,))
     difficulty = cursor.fetchone()
-    print(f"Difficulty for {username}: {difficulty[0]}")
-    # Set the player's difficulty based on the profile, or default to medium if not set
-    if difficulty:
-        players[username].setDifficulty(difficulty[0])
+    players[username].setDifficulty(difficulty[0] if difficulty else 2)
+
+    # Special handling
+    if 'world_boss' in fight_script:
+        check_world_boss()  # Ensure world boss exists
+        global world_boss
+        fight_script = f'js/{world_boss.script}'
+        cursor.execute('SELECT AVG(difficulty) FROM profiles WHERE user_id = (SELECT user_id FROM users WHERE username = ?)', (username,))
+        difficulty = cursor.fetchone()[0]
+        players[username].setDifficulty(difficulty)
     else:
-        # Default to medium difficulty if not set
-        players[username].setDifficulty(10)
+        # INDIVIDUAL BOSS
+        boss_word = "conquest"
+        for i in range(len(levels)):
+            if fight_script_name == levels[i]:
+                boss_word = words[i]
+                break
+        boss = Boss()
+        boss.set_attributes("Mini Boss", boss_word, fight_script_name, 200, False)
+        player_bosses[username] = boss
+        print(f"Player {username}'s boss initialized.")
+
     return render_template('game.html', fight_script=fight_script, rush=rush)
 
 @app.route('/api/boss', methods=['GET'])
 @login_required
 def get_boss():
-    global boss
+    username = session['user']
+    fight = request.args.get('fight', 'fight_2')
+
+    if fight == 'world_boss':
+        boss = world_boss
+    else:
+        boss = player_bosses.get(username)
+        if not boss:
+            boss = Boss()
+            boss.set_attributes("Mini Boss", "conquest", fight, 200, False)
+            player_bosses[username] = boss
+    print(f"[DEBUG] fight={fight}, boss.health={boss.health}")
+
     return jsonify({
         'name': boss.name,
         'health': boss.health,
-        'key_word': boss.key_word  # now a string
+        'key_word': boss.key_word
     })
+
     
 @app.route('/api/difficulty', methods=['GET'])
 @login_required
@@ -572,19 +653,39 @@ def get_difficulty():
 @app.route('/api/boss/damage', methods=['POST'])
 @login_required
 def damage_boss():
-    global boss
+    username = session['user']
+    fight = request.args.get('fight', 'fight_2')
+    if fight == 'world_boss':
+        boss = world_boss
+    else:
+        boss = player_bosses.get(username)
+        if not boss:
+            boss = Boss("Mini Boss", "slay")
+            player_bosses[username] = boss
+
     data = request.get_json()
     damage = data.get('damage', 0)
     boss.take_dmg(damage)
     defeated = False
+    if boss.world_boss:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE world_boss SET health = ? WHERE boss_id = (SELECT boss_id FROM world_boss ORDER BY boss_id DESC LIMIT 1)', (boss.health,))
+        conn.commit()
     if boss.health <= 0:
         defeated = True
-        # Reset boss health for next round
-        boss.health = 200
+        if fight != 'world_boss':
+            player_bosses.pop(username, None)  # Clean up if personal
+        else:
+            world_boss.health = 0
+            # Reset world boss for next fight
+            create_world_boss()
+
     return jsonify({
         'health': boss.health,
         'defeated': defeated
     })
+
 
 @app.route('/api/player/hp', methods=['GET', 'POST'])
 @login_required

@@ -4,6 +4,9 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const slashes = [];
 const lasers = [];
+// Get the fight type from URL (e.g., "fight=world_boss" or "fight=fight_2")
+const urlParams = new URLSearchParams(window.location.search);
+const fightType = urlParams.get('fight') || 'fight_1';
 
 class Player {
     constructor() {
@@ -30,14 +33,23 @@ const difficulty = document.getElementById('difficulty');
 const keywordsContainer = document.getElementById('keywordsContainer');
 let keywordsData = {};
 let wordElements = []; // Store word elements for reuse
+let dmg_word = null; // Store the current damage word
 
 async function fetchBoss() {
-    const response = await fetch('/api/boss');
+    const response = await fetch(`/api/boss?fight=${fightType}`);
     const data = await response.json();
     bossHealth = data.health;
     boss.key_word = data.key_word;
+
+    // Choose one word from the group as the correct damage word
+    const groupWords = keywordsData[boss.key_word]?.word || [];
+    dmg_word = groupWords[Math.floor(Math.random() * groupWords.length)];
+
     updateBossBar();
 }
+
+
+
 
 function updateBossBar() {
     bossBar.innerHTML = `Boss Health: ${bossHealth} `;
@@ -67,101 +79,102 @@ function displayKeywords() {
     keywordsContainer.innerHTML = '';
     const placedRects = [];
 
-    for (const group in keywordsData) {
-        const words = keywordsData[group].word;
-        words.forEach(word => {
-            const wordElem = document.createElement('span');
-            wordElem.innerText = word;
-            wordElem.style.position = 'absolute';
-            wordElem.style.cursor = 'none';
-            wordElem.style.userSelect = 'none';
-            wordElem.style.padding = '5px 10px';
-            wordElem.style.border = '1px solid black';
-            wordElem.style.borderRadius = '5px';
-            wordElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
-            wordElem.style.color = 'white';
-            wordElem.style.pointerEvents = 'auto';
-            wordElem.style.opacity = '0';
-            wordElem.style.transition = 'opacity 0.5s';
+    // Use only the current boss key_word
+    const group = boss.key_word;
+    const words = keywordsData[group]?.word || [];
+    words.forEach(word => {
+        const wordElem = document.createElement('span');
+        wordElem.innerText = word;
+        wordElem.style.position = 'absolute';
+        wordElem.style.cursor = 'none';
+        wordElem.style.userSelect = 'none';
+        wordElem.style.padding = '5px 10px';
+        wordElem.style.border = 'none';
+        wordElem.style.backgroundColor = 'transparent';
+        wordElem.style.color = 'white';
+        wordElem.style.pointerEvents = 'auto';
+        wordElem.style.opacity = '0';
+        wordElem.style.transition = 'opacity 0.5s';
 
-            // Start offscreen to get dimensions
-            wordElem.style.left = '-9999px';
-            wordElem.style.top = '-9999px';
-            keywordsContainer.appendChild(wordElem);
+        // Start offscreen to get dimensions
+        wordElem.style.left = '-9999px';
+        wordElem.style.top = '-9999px';
+        keywordsContainer.appendChild(wordElem);
 
-            const elemWidth = wordElem.offsetWidth;
-            const elemHeight = wordElem.offsetHeight;
+        const elemWidth = wordElem.offsetWidth;
+        const elemHeight = wordElem.offsetHeight;
 
-            let x, y, collision;
-            let attempts = 0;
-            do {
-                x = Math.random() * (window.innerWidth - elemWidth - 40);
-                y = Math.random() * (window.innerHeight - elemHeight - 40);
-                collision = placedRects.some(rect => {
-                    return !(
-                        x + elemWidth < rect.x ||
-                        x > rect.x + rect.width ||
-                        y + elemHeight < rect.y ||
-                        y > rect.y + rect.height
-                    );
-                });
-                attempts++;
-            } while (collision && attempts < 50);
-
-            wordElem.style.left = `${x}px`;
-            wordElem.style.top = `${y}px`;
-
-            placedRects.push({ x, y, width: elemWidth, height: elemHeight });
-
-            wordElem.addEventListener('mouseenter', () => {
-                wordElem.style.backgroundColor = 'rgba(255,255,255,0.2)';
+        let x, y, collision;
+        let attempts = 0;
+        do {
+            x = Math.random() * (window.innerWidth - elemWidth - 40);
+            y = Math.random() * (window.innerHeight - elemHeight - 40);
+            collision = placedRects.some(rect => {
+                return !(
+                    x + elemWidth < rect.x ||
+                    x > rect.x + rect.width ||
+                    y + elemHeight < rect.y ||
+                    y > rect.y + rect.height
+                );
             });
-            wordElem.addEventListener('mouseleave', () => {
-                wordElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
-            });
-            wordElem.addEventListener('click', () => {
-                handleKeywordClick(group, word);
-            });
+            attempts++;
+        } while (collision && attempts < 50);
 
-            // Trigger fade-in
-            requestAnimationFrame(() => {
-                wordElem.style.opacity = '1';
-            });
+        wordElem.style.left = `${x}px`;
+        wordElem.style.top = `${y}px`;
+
+        placedRects.push({ x, y, width: elemWidth, height: elemHeight });
+
+        wordElem.addEventListener('mouseenter', () => {
+            wordElem.style.backgroundColor = 'rgba(255,255,255,0.2)';
         });
-    }
+        wordElem.addEventListener('mouseleave', () => {
+            wordElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        });
+        wordElem.addEventListener('click', () => {
+            handleKeywordClick(group, word);
+        });
+
+        // Trigger fade-in
+        requestAnimationFrame(() => {
+            wordElem.style.opacity = '1';
+        });
+    });
 }
 
+
 async function handleKeywordClick(group, word) {
-    if (boss.key_word && word === boss.key_word) {
+    if (boss.key_word && word === dmg_word) {
         const damageAmount = 50;
-        const response = await fetch('/api/boss/damage', {
+        const response = await fetch(`/api/boss/damage?fight=${fightType}`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({damage: damageAmount})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ damage: damageAmount })
         });
         const data = await response.json();
         bossHealth = data.health;
         updateBossBar();
         keywordsContainer.style.display = 'none';
+
         if (window.isRush && data.defeated) {
-            // Store player HP in localStorage before redirecting
             localStorage.setItem('playerHP', player.hp);
             window.location.href = "/game?fight=fight_2&rush=true";
-        }
-        else if (data.defeated) {
+        } else if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }
     } else {
+        // Incorrect word — maybe flash red or just hide
         keywordsContainer.style.display = 'none';
     }
 }
 
+
 let boss = { key_word: {} };
 
 async function initGameBoss() {
-    await fetchBoss();
     await fetchKeywords();
+    await fetchBoss();
     await fetchDifficulty();
     displayKeywords();
     setInterval(() => {

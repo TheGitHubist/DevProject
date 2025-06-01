@@ -11,18 +11,19 @@ def init_db():
     # Create users table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        world_boss_dmg INTEGER DEFAULT 0
     )
     ''')
     
     # Create profiles table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS profiles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profiles_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER UNIQUE NOT NULL,
         name TEXT NOT NULL,
         description TEXT DEFAULT '',
@@ -30,7 +31,18 @@ def init_db():
         background_color TEXT DEFAULT '#f3f4f6',
         background_image TEXT,
         difficulty INTEGER DEFAULT 1,
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+    )
+    ''')
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS world_boss(
+        boss_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        health INTEGER NOT NULL,
+        level_model TEXT NOT NULL,
+        key_word TEXT NOT NULL,
+        created_at TEXT NOT NULL
     )
     ''')
     

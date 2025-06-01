@@ -4,5 +4,11 @@
     },
     "despair": {
         "word": ["despair", "pain", "sorrow", "grief"]
+    },
+    "hunt" : {
+        "word": ["hunt", "chase", "pursuit", "seek"]
+    },
+    "blood": {
+        "word": ["blood", "life", "sacrifice", "offering"]
     }
 }
