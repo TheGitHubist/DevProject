@@ -530,6 +530,7 @@ def get_background():
 def game():
     username = session['user']
     fight_script = request.args.get('fight', 'fight_2')
+    rush = request.args.get('rush', 'false').lower() == 'true'
     fight_script = 'js/' + fight_script
     # Create a new player object at the start of the game, replacing any existing one
     players[username] = Player()
@@ -547,7 +548,7 @@ def game():
     else:
         # Default to medium difficulty if not set
         players[username].setDifficulty(10)
-    return render_template('game.html', fight_script=fight_script)
+    return render_template('game.html', fight_script=fight_script, rush=rush)
 
 @app.route('/api/boss', methods=['GET'])
 @login_required

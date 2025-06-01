@@ -143,7 +143,10 @@ async function handleKeywordClick(group, word) {
         bossHealth = data.health;
         updateBossBar();
         keywordsContainer.style.display = 'none';
-        if (data.defeated) {
+        if (window.isRush && data.defeated) {
+            window.location.href = "/game?fight=fight_2&amp;rush=true";
+        }
+        else if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }

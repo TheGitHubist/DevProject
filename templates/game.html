@@ -22,6 +22,9 @@
         <!-- Keywords will appear here -->
     </div>
 <canvas id="gameCanvas"></canvas>
+<script>
+  window.isRush = {{ rush|tojson }};
+</script>
 <script src="{{ url_for('static', filename= fight_script ~ '.js') }}"></script>
 </body>
 </html>
