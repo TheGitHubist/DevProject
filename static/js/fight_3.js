@@ -3,7 +3,6 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const slashes = [];
-const lasers = [];
 
 class Player {
     constructor() {
@@ -143,12 +142,7 @@ async function handleKeywordClick(group, word) {
         bossHealth = data.health;
         updateBossBar();
         keywordsContainer.style.display = 'none';
-        if (window.isRush && data.defeated) {
-            // Store player HP in localStorage before redirecting
-            localStorage.setItem('playerHP', player.hp);
-            window.location.href = "/game?fight=fight_2&rush=true";
-        }
-        else if (data.defeated) {
+        if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }
@@ -184,28 +178,31 @@ async function initGameBoss() {
 initGameBoss();
 
 class ProjectileAttack {
-    constructor(name, damage, speed, x, y, targetX, targetY, sprite) {
+    constructor(name, damage, speed, x, y, targetX, targetY, sprite, scale = 3) {
         this.name = name;
         this.damage = damage;
         this.speed = speed;
         this.x = x;
         this.y = y;
-        this.radius = 10; // for collision
+        this.radius = 10;
         this.sprite = sprite;
-        this.rotation = 0;
+        this.scale = scale;
 
-        // Compute angle to player at time of spawn
+        // Compute angle to player at spawn
         const dx = targetX - x;
         const dy = targetY - y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         this.vx = (dx / distance) * speed;
         this.vy = (dy / distance) * speed;
+
+        // 💡 Store angle in radians so it always points at the player
+        this.angle = Math.atan2(dy, dx) + 90 * (Math.PI / 180); // Convert 45 degrees to radians
     }
 
     move() {
         this.x += this.vx;
         this.y += this.vy;
-        this.rotation += 0.4; // Rotate every frame
+        // No rotation update — direction is fixed
     }
 
     isCollidingWith(px, py, pr) {
@@ -216,17 +213,14 @@ class ProjectileAttack {
     }
 
     draw(ctx) {
-        const size = 30;
+        const size = 32 * this.scale; // 🔍 scale the image
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation);
+        ctx.rotate(this.angle); // ✅ Always point toward player
         ctx.drawImage(this.sprite, -size / 2, -size / 2, size, size);
         ctx.restore();
     }
 }
-
-
-
 
 class SlashAttack {
     constructor(name, damage, x, y, width, height, duration) {
@@ -260,37 +254,6 @@ class SlashAttack {
     }
 }
 
-class LaserBeamAttack {
-    constructor(name, damage, x, width, duration) {
-        this.name = name;
-        this.damage = damage;
-        this.x = x;
-        this.width = width;
-        this.y = 0;
-        this.height = canvas.height;
-        this.duration = duration;
-        this.startTime = performance.now();
-    }
-
-    isActive() {
-        return performance.now() - this.startTime < this.duration;
-    }
-
-    isCollidingWith(px, py, pr) {
-        return this.isActive() &&
-            px + pr > this.x &&
-            px - pr < this.x + this.width;
-    }
-
-    draw(ctx) {
-        if (this.isActive()) {
-            ctx.fillStyle = 'cyan';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-        }
-    }
-}
-
-
 const player = new Player();
 let diff = player.getDifficulty();
 let playerX = canvas.width / 2;
@@ -303,7 +266,8 @@ document.addEventListener('mousemove', (e) => {
     playerY = e.clientY;
 });
 
-let shurikenSprite = null;
+let knifeSprite = null;
+let redKnifeSprite = null;
 
 function loadSprite(src) {
     return new Promise((resolve, reject) => {
@@ -315,7 +279,8 @@ function loadSprite(src) {
 }
 
 async function preloadSprites() {
-    shurikenSprite = await loadSprite('/static/sprites/shuriken.png');
+    knifeSprite = await loadSprite('/static/sprites/knife.png');
+    redKnifeSprite = await loadSprite('/static/sprites/red_knife.png');
 }
 
 preloadSprites();
@@ -338,7 +303,7 @@ function spawnShurikenFromBorder() {
         y = Math.random() * canvas.height;
     }
 
-    if (shurikenSprite) {
+    if (knifeSprite) {
         bullets.push(new ProjectileAttack(
             "shuriken",
             1,
@@ -347,11 +312,10 @@ function spawnShurikenFromBorder() {
             y,
             playerX,
             playerY,
-            shurikenSprite
+            knifeSprite
         ));
     }
 }
-
 
 function updateHPBar(hp) {
     document.getElementById("hpBar").innerText = `HP: ${hp}`;
@@ -382,7 +346,36 @@ function setIntervals(diff) {
         if (Math.random() < 0.5) {
             slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
         } else {
-            lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
+            if (redKnifeSprite) {
+                // Spawn red knife projectile dealing 100 damage
+                const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
+                let x, y;
+
+                if (side === 0) { // Top
+                    x = Math.random() * canvas.width;
+                    y = -20;
+                } else if (side === 1) { // Right
+                    x = canvas.width + 20;
+                    y = Math.random() * canvas.height;
+                } else if (side === 2) { // Bottom
+                    x = Math.random() * canvas.width;
+                    y = canvas.height + 20;
+                } else { // Left
+                    x = -20;
+                    y = Math.random() * canvas.height;
+                }
+
+                bullets.push(new ProjectileAttack(
+                    "red_knife",
+                    100,
+                    5,
+                    x,
+                    y,
+                    playerX,
+                    playerY,
+                    redKnifeSprite
+                ));
+            }
         }
     }, weaponspwanint);
 }
@@ -397,7 +390,6 @@ function updateweapon() {
 
 // Initialize intervals with default difficulty
 setIntervals(player.getDifficulty());
-
 
 function sendDamageToServer(amount) {
     fetch('/api/player/hp', {
@@ -431,12 +423,6 @@ function update() {
             player.takeDamage(s.damage);
         }
     });
-
-    lasers.forEach(l => {
-        if (l.isCollidingWith(playerX, playerY, playerRadius)) {
-            player.takeDamage(l.damage);
-        }
-    });
 }
 
 function draw() {
@@ -451,12 +437,9 @@ function draw() {
     // Draw bullets
     bullets.forEach(b => b.draw(ctx));
 
-    // Draw slashes and lasers
+    // Draw slashes
     slashes.forEach(s => s.draw(ctx));
-    lasers.forEach(l => l.draw(ctx));
 }
-
-
 
 function loop() {
     update();
@@ -464,4 +447,32 @@ function loop() {
     requestAnimationFrame(loop);
     console.log(player.hp)
 }
+
+function updatePlayerHPFromRush() {
+    if (window.isRush) {
+        const storedHP = localStorage.getItem('playerHP');
+        if (storedHP !== null) {
+            const hp = parseInt(storedHP, 10);
+            player.hp = hp;
+            updateHPBar(hp);
+
+            // Immediately sync the server-side player object with this HP
+            fetch('/api/player/hp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ damage: 100 - hp })  // Simulate damage to bring server HP to same level
+            }).then(res => res.json()).then(data => {
+                console.log('Server HP synced:', data.hp);
+            });
+        } else {
+            console.warn('No stored HP found');
+        }
+    }
+    localStorage.removeItem('playerHP');
+}
+
+
+
+updatePlayerHPFromRush();
+
 loop();

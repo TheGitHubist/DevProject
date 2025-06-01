@@ -529,7 +529,7 @@ def get_background():
 @login_required
 def game():
     username = session['user']
-    fight_script = request.args.get('fight', 'fight_2')
+    fight_script = request.args.get('fight_1', 'fight_2', 'fight_3', 'fight_4')
     rush = request.args.get('rush', 'false').lower() == 'true'
     fight_script = 'js/' + fight_script
     # Create a new player object at the start of the game, replacing any existing one
