@@ -3,7 +3,6 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const slashes = [];
-const lasers = [];
 
 class Player {
     constructor() {
@@ -223,10 +222,6 @@ class ProjectileAttack {
     }
 }
 
-
-
-
-
 class SlashAttack {
     constructor(name, damage, x, y, width, height, duration) {
         this.name = name;
@@ -258,37 +253,6 @@ class SlashAttack {
         }
     }
 }
-
-class LaserBeamAttack {
-    constructor(name, damage, x, width, duration) {
-        this.name = name;
-        this.damage = damage;
-        this.x = x;
-        this.width = width;
-        this.y = 0;
-        this.height = canvas.height;
-        this.duration = duration;
-        this.startTime = performance.now();
-    }
-
-    isActive() {
-        return performance.now() - this.startTime < this.duration;
-    }
-
-    isCollidingWith(px, py, pr) {
-        return this.isActive() &&
-            px + pr > this.x &&
-            px - pr < this.x + this.width;
-    }
-
-    draw(ctx) {
-        if (this.isActive()) {
-            ctx.fillStyle = 'cyan';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-        }
-    }
-}
-
 
 const player = new Player();
 let diff = player.getDifficulty();
@@ -353,7 +317,6 @@ function spawnShurikenFromBorder() {
     }
 }
 
-
 function updateHPBar(hp) {
     document.getElementById("hpBar").innerText = `HP: ${hp}`;
 }
@@ -384,7 +347,34 @@ function setIntervals(diff) {
             slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
         } else {
             if (redKnifeSprite) {
-                lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800, redKnifeSprite));
+                // Spawn red knife projectile dealing 100 damage
+                const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
+                let x, y;
+
+                if (side === 0) { // Top
+                    x = Math.random() * canvas.width;
+                    y = -20;
+                } else if (side === 1) { // Right
+                    x = canvas.width + 20;
+                    y = Math.random() * canvas.height;
+                } else if (side === 2) { // Bottom
+                    x = Math.random() * canvas.width;
+                    y = canvas.height + 20;
+                } else { // Left
+                    x = -20;
+                    y = Math.random() * canvas.height;
+                }
+
+                bullets.push(new ProjectileAttack(
+                    "red_knife",
+                    100,
+                    5,
+                    x,
+                    y,
+                    playerX,
+                    playerY,
+                    redKnifeSprite
+                ));
             }
         }
     }, weaponspwanint);
@@ -400,7 +390,6 @@ function updateweapon() {
 
 // Initialize intervals with default difficulty
 setIntervals(player.getDifficulty());
-
 
 function sendDamageToServer(amount) {
     fetch('/api/player/hp', {
@@ -434,12 +423,6 @@ function update() {
             player.takeDamage(s.damage);
         }
     });
-
-    lasers.forEach(l => {
-        if (l.isCollidingWith(playerX, playerY, playerRadius)) {
-            player.takeDamage(l.damage);
-        }
-    });
 }
 
 function draw() {
@@ -454,12 +437,9 @@ function draw() {
     // Draw bullets
     bullets.forEach(b => b.draw(ctx));
 
-    // Draw slashes and lasers
+    // Draw slashes
     slashes.forEach(s => s.draw(ctx));
-    lasers.forEach(l => l.draw(ctx));
 }
-
-
 
 function loop() {
     update();
