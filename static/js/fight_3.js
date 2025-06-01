@@ -142,7 +142,12 @@ async function handleKeywordClick(group, word) {
         bossHealth = data.health;
         updateBossBar();
         keywordsContainer.style.display = 'none';
-        if (data.defeated) {
+        if (window.isRush && data.defeated) {
+            // Store player HP in localStorage before redirecting
+            localStorage.setItem('playerHP', player.hp);
+            window.location.href = "/game?fight=fight_4&rush=true";
+        }
+        else if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }

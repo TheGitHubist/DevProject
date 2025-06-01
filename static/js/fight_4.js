@@ -143,12 +143,7 @@ async function handleKeywordClick(group, word) {
         bossHealth = data.health;
         updateBossBar();
         keywordsContainer.style.display = 'none';
-        if (window.isRush && data.defeated) {
-            // Store player HP in localStorage before redirecting
-            localStorage.setItem('playerHP', player.hp);
-            window.location.href = "/game?fight=fight_2&rush=true";
-        }
-        else if (data.defeated) {
+        if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }
@@ -464,4 +459,32 @@ function loop() {
     requestAnimationFrame(loop);
     console.log(player.hp)
 }
+
+function updatePlayerHPFromRush() {
+    if (window.isRush) {
+        const storedHP = localStorage.getItem('playerHP');
+        if (storedHP !== null) {
+            const hp = parseInt(storedHP, 10);
+            player.hp = hp;
+            updateHPBar(hp);
+
+            // Immediately sync the server-side player object with this HP
+            fetch('/api/player/hp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ damage: 100 - hp })  // Simulate damage to bring server HP to same level
+            }).then(res => res.json()).then(data => {
+                console.log('Server HP synced:', data.hp);
+            });
+        } else {
+            console.warn('No stored HP found');
+        }
+    }
+    localStorage.removeItem('playerHP');
+}
+
+
+
+updatePlayerHPFromRush();
+
 loop();
