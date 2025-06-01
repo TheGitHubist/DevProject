@@ -8,17 +8,28 @@ const lasers = [];
 class Player {
     constructor() {
         this.hp = 100;
+        this.difficulty = 1; // 1 = easy, 2 = medium, 3 = hard
     }
 
     takeDamage(amount) {
         sendDamageToServer(amount);
     }
+
+    setDifficulty(level) {
+        this.difficulty = level;
+    }
+
+    getDifficulty() {
+        return this.difficulty;
+    }
 }
 
 let bossHealth = 1000;
 const bossBar = document.getElementById('bossBar');
+const difficulty = document.getElementById('difficulty');
 const keywordsContainer = document.getElementById('keywordsContainer');
 let keywordsData = {};
+let wordElements = []; // Store word elements for reuse
 
 async function fetchBoss() {
     const response = await fetch('/api/boss');
@@ -28,13 +39,28 @@ async function fetchBoss() {
     updateBossBar();
 }
 
+function updateBossBar() {
+    bossBar.innerHTML = `Boss Health: ${bossHealth} `;
+}
+
+function updatedifficulty() {
+    difficulty.innerHTML = `Difficulty: ${diff}`;
+}
+
+async function fetchDifficulty() {
+    const response = await fetch('/api/difficulty');
+    const data = await response.json();
+    player.setDifficulty(data.difficulty);
+    diff = player.getDifficulty();
+    updatedifficulty();
+    setIntervals(diff);
+    updateshuri();
+    updateweapon();
+}
+
 async function fetchKeywords() {
     const response = await fetch('/static/words.json');
     keywordsData = await response.json();
-}
-
-function updateBossBar() {
-    bossBar.innerText = `Boss HP: ${bossHealth}`;
 }
 
 function displayKeywords() {
@@ -47,7 +73,7 @@ function displayKeywords() {
             const wordElem = document.createElement('span');
             wordElem.innerText = word;
             wordElem.style.position = 'absolute';
-            wordElem.style.cursor = 'pointer';
+            wordElem.style.cursor = 'none';
             wordElem.style.userSelect = 'none';
             wordElem.style.padding = '5px 10px';
             wordElem.style.border = '1px solid black';
@@ -69,8 +95,8 @@ function displayKeywords() {
             let x, y, collision;
             let attempts = 0;
             do {
-                x = Math.random() * (window.innerWidth - elemWidth);
-                y = Math.random() * (window.innerHeight - elemHeight);
+                x = Math.random() * (window.innerWidth - elemWidth - 40);
+                y = Math.random() * (window.innerHeight - elemHeight - 40);
                 collision = placedRects.some(rect => {
                     return !(
                         x + elemWidth < rect.x ||
@@ -105,7 +131,6 @@ function displayKeywords() {
     }
 }
 
-
 async function handleKeywordClick(group, word) {
     if (boss.key_word && word === boss.key_word) {
         const damageAmount = 50;
@@ -117,10 +142,13 @@ async function handleKeywordClick(group, word) {
         const data = await response.json();
         bossHealth = data.health;
         updateBossBar();
+        keywordsContainer.style.display = 'none';
         if (data.defeated) {
             alert('Boss defeated! Returning to home page.');
             window.location.href = '/home';
         }
+    } else {
+        keywordsContainer.style.display = 'none';
     }
 }
 
@@ -129,6 +157,7 @@ let boss = { key_word: {} };
 async function initGameBoss() {
     await fetchBoss();
     await fetchKeywords();
+    await fetchDifficulty();
     displayKeywords();
     setInterval(() => {
         displayKeywords();
@@ -138,11 +167,11 @@ async function initGameBoss() {
     keywordsContainer.style.display = 'none';
     setInterval(() => {
         visibleCount++;
-        if (visibleCount <= 2) {
+        if (visibleCount <= 1) {
             keywordsContainer.style.display = 'inline-block';
         } else {
             keywordsContainer.style.display = 'none';
-            if (visibleCount === 3) visibleCount = 0;
+            if (visibleCount === 2) visibleCount = 0;
         }
     }, 5000);
 }
@@ -150,28 +179,31 @@ async function initGameBoss() {
 initGameBoss();
 
 class ProjectileAttack {
-    constructor(name, damage, speed, x, y, targetX, targetY, sprite) {
+    constructor(name, damage, speed, x, y, targetX, targetY, sprite, scale = 3) {
         this.name = name;
         this.damage = damage;
         this.speed = speed;
         this.x = x;
         this.y = y;
-        this.radius = 10; // for collision
+        this.radius = 10;
         this.sprite = sprite;
-        this.rotation = 0;
+        this.scale = scale;
 
-        // Compute angle to player at time of spawn
+        // Compute angle to player at spawn
         const dx = targetX - x;
         const dy = targetY - y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         this.vx = (dx / distance) * speed;
         this.vy = (dy / distance) * speed;
+
+        // 💡 Store angle in radians so it always points at the player
+        this.angle = Math.atan2(dy, dx) + 90 * (Math.PI / 180); // Convert 45 degrees to radians
     }
 
     move() {
         this.x += this.vx;
         this.y += this.vy;
-        this.rotation += 0.2; // Rotate every frame
+        // No rotation update — direction is fixed
     }
 
     isCollidingWith(px, py, pr) {
@@ -182,14 +214,15 @@ class ProjectileAttack {
     }
 
     draw(ctx) {
-        const size = 30;
+        const size = 32 * this.scale; // 🔍 scale the image
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation);
+        ctx.rotate(this.angle); // ✅ Always point toward player
         ctx.drawImage(this.sprite, -size / 2, -size / 2, size, size);
         ctx.restore();
     }
 }
+
 
 
 
@@ -258,6 +291,7 @@ class LaserBeamAttack {
 
 
 const player = new Player();
+let diff = player.getDifficulty();
 let playerX = canvas.width / 2;
 let playerY = canvas.height / 2;
 const playerRadius = 10;
@@ -267,6 +301,25 @@ document.addEventListener('mousemove', (e) => {
     playerX = e.clientX;
     playerY = e.clientY;
 });
+
+let knifeSprite = null;
+let redKnifeSprite = null;
+
+function loadSprite(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+async function preloadSprites() {
+    knifeSprite = await loadSprite('/static/sprites/knife.png');
+    redKnifeSprite = await loadSprite('/static/sprites/red_knife.png');
+}
+
+preloadSprites();
 
 function spawnShurikenFromBorder() {
     const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
@@ -286,16 +339,18 @@ function spawnShurikenFromBorder() {
         y = Math.random() * canvas.height;
     }
 
-    bullets.push(new ProjectileAttack(
-        "shuriken",
-        1,
-        3,
-        x,
-        y,
-        playerX,
-        playerY,
-        document.getElementById("shurikenSprite")
-    ));
+    if (knifeSprite) {
+        bullets.push(new ProjectileAttack(
+            "shuriken",
+            1,
+            3,
+            x,
+            y,
+            playerX,
+            playerY,
+            knifeSprite
+        ));
+    }
 }
 
 
@@ -303,15 +358,48 @@ function updateHPBar(hp) {
     document.getElementById("hpBar").innerText = `HP: ${hp}`;
 }
 
-setInterval(spawnShurikenFromBorder, 60);
+const shuri = document.getElementById('shuri');
+const weapon = document.getElementById('weapon');
 
-setInterval(() => {
-if (Math.random() < 0.5) {
-    slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
-} else {
-    lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800));
+let shurikenIntervalId;
+let weaponIntervalId;
+let shurispwanint;
+let weaponspwanint;
+
+function setIntervals(diff) {
+    shurispwanint = 600 / diff;
+    weaponspwanint = 4000 / diff;
+
+    if (shurikenIntervalId) {
+        clearInterval(shurikenIntervalId);
+    }
+    if (weaponIntervalId) {
+        clearInterval(weaponIntervalId);
+    }
+
+    shurikenIntervalId = setInterval(spawnShurikenFromBorder, shurispwanint);
+
+    weaponIntervalId = setInterval(() => {
+        if (Math.random() < 0.5) {
+            slashes.push(new SlashAttack("slash", 1, Math.random() * canvas.width, canvas.height - 100, 100, 20, 500));
+        } else {
+            if (redKnifeSprite) {
+                lasers.push(new LaserBeamAttack("laser", 1, Math.random() * canvas.width, 20, 800, redKnifeSprite));
+            }
+        }
+    }, weaponspwanint);
 }
-}, 400);
+
+function updateshuri() {
+    shuri.innerText = `Shuri: ${shurispwanint}`;
+}
+
+function updateweapon() {
+    weapon.innerText = `Weapon: ${weaponspwanint}`;
+}
+
+// Initialize intervals with default difficulty
+setIntervals(player.getDifficulty());
 
 
 function sendDamageToServer(amount) {

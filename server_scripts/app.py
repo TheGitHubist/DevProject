@@ -535,7 +535,7 @@ def game():
     players[username] = Player()
     # Reset boss health when a new game starts
     global boss
-    boss.health = 1000
+    boss.health = 200
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('SELECT difficulty FROM profiles WHERE user_id = (SELECT id FROM users WHERE username = ?)', (username,))
@@ -579,7 +579,7 @@ def damage_boss():
     if boss.health <= 0:
         defeated = True
         # Reset boss health for next round
-        boss.health = 1000
+        boss.health = 200
     return jsonify({
         'health': boss.health,
         'defeated': defeated

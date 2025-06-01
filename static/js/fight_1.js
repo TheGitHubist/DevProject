@@ -73,7 +73,7 @@ function displayKeywords() {
             const wordElem = document.createElement('span');
             wordElem.innerText = word;
             wordElem.style.position = 'absolute';
-            wordElem.style.cursor = 'pointer';
+            wordElem.style.cursor = 'none';
             wordElem.style.userSelect = 'none';
             wordElem.style.padding = '5px 10px';
             wordElem.style.border = '1px solid black';
@@ -95,8 +95,8 @@ function displayKeywords() {
             let x, y, collision;
             let attempts = 0;
             do {
-                x = Math.random() * (window.innerWidth - elemWidth);
-                y = Math.random() * (window.innerHeight - elemHeight);
+                x = Math.random() * (window.innerWidth - elemWidth - 40);
+                y = Math.random() * (window.innerHeight - elemHeight - 40);
                 collision = placedRects.some(rect => {
                     return !(
                         x + elemWidth < rect.x ||
@@ -200,7 +200,7 @@ class ProjectileAttack {
     move() {
         this.x += this.vx;
         this.y += this.vy;
-        this.rotation += 0.2; // Rotate every frame
+        this.rotation += 0.4; // Rotate every frame
     }
 
     isCollidingWith(px, py, pr) {
@@ -298,6 +298,23 @@ document.addEventListener('mousemove', (e) => {
     playerY = e.clientY;
 });
 
+let shurikenSprite = null;
+
+function loadSprite(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+async function preloadSprites() {
+    shurikenSprite = await loadSprite('/static/sprites/shuriken.png');
+}
+
+preloadSprites();
+
 function spawnShurikenFromBorder() {
     const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
     let x, y;
@@ -316,16 +333,18 @@ function spawnShurikenFromBorder() {
         y = Math.random() * canvas.height;
     }
 
-    bullets.push(new ProjectileAttack(
-        "shuriken",
-        1,
-        3,
-        x,
-        y,
-        playerX,
-        playerY,
-        document.getElementById("shurikenSprite")
-    ));
+    if (shurikenSprite) {
+        bullets.push(new ProjectileAttack(
+            "shuriken",
+            1,
+            3,
+            x,
+            y,
+            playerX,
+            playerY,
+            shurikenSprite
+        ));
+    }
 }
 
 
